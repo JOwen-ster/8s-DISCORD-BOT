@@ -14,7 +14,7 @@ intents.members = True
 bot = commands.Bot(command_prefix='^', description=description, intents=intents)
 
 # Each guild has its own unique id which is associated with a list of players, each guild has 1 unique game at a time
-stored_games: dict[int, list[str]] = {}
+stored_games: dict[int, dict[str, list[str]]] = {}
 
 @bot.event
 async def on_ready():
@@ -58,15 +58,16 @@ async def start_8s(interaction: discord.Interaction):
         lobby_count = len(discord.utils.get(find_category.voice_channels, name='Lobby-8s').members)
         print(lobby_count)
         if lobby_count < 8:
-            await interaction.followup.send_message(embed=discord.Embed(title='Not enough players', color=discord.Color.red()), ephemeral=False)
-            return
+            await interaction.followup.send(embed=discord.Embed(title='Not enough players', color=discord.Color.red()), ephemeral=False)
         else:
-            stored_games[interaction.guild.id] = [
+            if interaction.guild.id not in stored_games:
+                stored_games[interaction.guild.id] = {}  # Ensure the guild entry exists
+            stored_games[interaction.guild.id]['lobby1'] = [
                 member.id for member in
                 discord.utils.get(find_category.voice_channels, name='Lobby-8s').members
             ]
-        print(stored_games)
-        await interaction.followup.send(embed=discord.Embed(title=f'8s started in {find_category.name}', color=discord.Color.green()), ephemeral=False)
+            print(stored_games)
+            await interaction.followup.send(embed=discord.Embed(title=f'8s started in {find_category.name}', color=discord.Color.green()), ephemeral=False)
     else:
         await interaction.followup.send(embed=discord.Embed(title='Setup category "Bot-8s" not found', color=discord.Color.red()), ephemeral=True)
 
