@@ -15,7 +15,7 @@ intents.members = True
 bot = commands.Bot(command_prefix='^', description=description, intents=intents)
 
 # Each guild has its own unique id which is associated with a list of players, each guild has 1 unique game at a time
-stored_games: dict[int, list[str]] = {}
+stored_games: dict[int, dict[str, list[str]]] = {}
 
 @bot.event
 async def on_ready():
