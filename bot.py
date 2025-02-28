@@ -25,6 +25,10 @@ async def on_ready():
 def get_category(interaction: discord.Interaction):
     return discord.utils.get(interaction.guild.categories, name='Bot-8s')
 
+# TODO
+# Able to create multiple 8s categories per server
+# storing each state in a hashmap of guild id to a list of player ids
+# use the player id's to assign roles to each player
 @bot.tree.command(name='setup')
 async def setup_channels(interaction: discord.Interaction):
     global bot
@@ -93,6 +97,9 @@ async def remove_role(interaction: discord.Interaction):
     await interaction.response.send_message(f"I removed the following roles: {', '.join(removed_roles)}", ephemeral=True) if removed_roles else await interaction.response.send_message("You do not have any roles to remove", ephemeral=True)
 
 
+# TODO
+# Posssibly have it so when starting a game, 8 dropdowns (linked to the 8 people currently in the lobby channel) appear that will each ask for a members player role
+# Also lock the lobby channel so only the people with roles can join
 @bot.tree.command(name='start-8s')
 async def start_8s(interaction: discord.Interaction):
     await interaction.response.defer()
