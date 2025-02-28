@@ -1,4 +1,5 @@
 import discord
+from discord.ui import Select, View
 from discord.ext import commands
 import random
 from dotenv import load_dotenv
@@ -50,6 +51,48 @@ async def setup_channels(interaction: discord.Interaction):
     await set_category.create_voice_channel(name='Bravo-8s', user_limit=4)
     await interaction.response.send_message(embed=discord.Embed(title='Setup complete', color=discord.Color.green()), ephemeral=False)
 
+class Dropdown(Select):
+    def __init__(self):
+        options = [
+            discord.SelectOption(label="Backline player", description="", value="backline"),
+            discord.SelectOption(label="Support player", description="", value="support"),
+            discord.SelectOption(label="Slayer player", description="", value="slayer"),
+        ]
+        super().__init__(placeholder="Choose one option...", min_values=1, max_values=1, options=options)
+
+    async def callback(self, interaction: discord.Interaction):
+        try:
+            await interaction.user.add_roles(discord.utils.get(interaction.guild.roles, name=self.values[0]))
+        except discord.errors.Forbidden:
+            await interaction.response.send_message(f"I do not have permission to give {interaction.user.mention} the role {self.values[0]}", ephemeral=True)
+        await interaction.response.send_message(f"You selected: {self.values[0]}", ephemeral=True)
+
+class DropdownView(View):
+    def __init__(self):
+        super().__init__()
+        self.add_item(Dropdown())
+
+
+@bot.tree.command(name='set-role')
+async def set_role(interaction: discord.Interaction):
+    await interaction.response.send_message("Select an option:", view=DropdownView(), ephemeral=True)
+
+
+@bot.tree.command(name='remove-role')
+async def remove_role(interaction: discord.Interaction):
+    removed_roles = []
+    for role in interaction.user.roles:
+        try:
+            if role.name in ['backline', 'support', 'slayer']:
+                await interaction.user.remove_roles(role)
+                removed_roles.append(role.name)
+        except discord.errors.Forbidden:
+            await interaction.response.send_message(f"I do not have permission to remove {role.name}, skipping...", ephemeral=True)
+            pass
+
+    await interaction.response.send_message(f"I removed the following roles: {', '.join(removed_roles)}", ephemeral=True) if removed_roles else await interaction.response.send_message("You do not have any roles to remove", ephemeral=True)
+
+
 @bot.tree.command(name='start-8s')
 async def start_8s(interaction: discord.Interaction):
     await interaction.response.defer()
@@ -57,18 +100,32 @@ async def start_8s(interaction: discord.Interaction):
     if find_category:
         lobby_count = len(discord.utils.get(find_category.voice_channels, name='Lobby-8s').members)
         print(lobby_count)
-        if lobby_count < 8:
-            await interaction.followup.send_message(embed=discord.Embed(title='Not enough players', color=discord.Color.red()), ephemeral=False)
-            return
-        else:
-            stored_games[interaction.guild.id] = [
-                member.id for member in
-                discord.utils.get(find_category.voice_channels, name='Lobby-8s').members
-            ]
+        # if lobby_count < 8:
+        #     await interaction.followup.send_message(embed=discord.Embed(title='Not enough players', color=discord.Color.red()), ephemeral=False)
+        # else:
+        stored_games[interaction.guild.id] = [
+            member.id for member in
+            discord.utils.get(find_category.voice_channels, name='Lobby-8s').members
+        ]
         print(stored_games)
         await interaction.followup.send(embed=discord.Embed(title=f'8s started in {find_category.name}', color=discord.Color.green()), ephemeral=False)
     else:
         await interaction.followup.send(embed=discord.Embed(title='Setup category "Bot-8s" not found', color=discord.Color.red()), ephemeral=True)
+
+# optimize to only drag players who are in a team channel, if there are no players in a alpha or bravo channel, then skip that channel
+@bot.tree.command(name='drag-players')
+async def drag_players(interaction: discord.Interaction):
+    await interaction.response.defer()
+    category = get_category(interaction)
+    if category:
+        for member in discord.utils.get(category.voice_channels, name='Alpha-8s').members:
+            await member.move_to(discord.utils.get(category.voice_channels, name='Lobby-8s'))
+        for member in discord.utils.get(category.voice_channels, name='Bravo-8s').members:
+            await member.move_to(discord.utils.get(category.voice_channels, name='Lobby-8s'))
+        await interaction.followup.send(embed=discord.Embed(title='Players dragged', color=discord.Color.green()), ephemeral=False)
+    else:
+        await interaction.followup.send(embed=discord.Embed(title='Setup category "Bot-8s" not found or there are no players for a team', color=discord.Color.red()), ephemeral=True)
+
 
 @bot.tree.command(name='delete-setup')
 async def delete_setup(interaction: discord.Interaction):
