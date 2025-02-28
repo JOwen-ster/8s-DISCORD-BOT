@@ -29,6 +29,7 @@ def get_category(interaction: discord.Interaction):
 # Able to create multiple 8s categories per server
 # storing each state in a hashmap of guild id to a list of player ids
 # use the player id's to assign roles to each player
+# ADD ABILITY TO EDIT PLAYER ROLES FOR A GAME GIVEN ITS NAME
 @bot.tree.command(name='setup')
 async def setup_channels(interaction: discord.Interaction):
     global bot
