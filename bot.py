@@ -17,6 +17,16 @@ bot = commands.Bot(command_prefix='^', description=description, intents=intents)
 # Each guild has its own unique id which is associated with a list of players, each guild has 1 unique game at a time
 stored_games: dict[int, dict[str, list[str]]] = {}
 
+# games = {
+#     guild_id: {
+#         'game_id': [player_id, player_id, player_id],
+#         'game_id': [player_id, player_id, player_id],
+#         'game_id': [player_id, player_id, player_id],
+#         ...
+#     }
+#     ...
+# }
+
 @bot.event
 async def on_ready():
     await bot.tree.sync()
@@ -100,6 +110,13 @@ async def remove_role(interaction: discord.Interaction):
 # TODO
 # Posssibly have it so when starting a game, 8 dropdowns (linked to the 8 people currently in the lobby channel) appear that will each ask for a members player role
 # Also lock the lobby channel so only the people with roles can join
+# Create a way to leave a game and have the roles removed from the user
+# Create a way to end a game, remove the roles from the users, and remove the keyname from the stored_games
+# also delete that ended games category
+
+# could make a generator channel
+# creates a category with 3 voice channels and 1 text channel
+# auto delete after no memebers are in any of the voice channels
 @bot.tree.command(name='start-8s')
 async def start_8s(interaction: discord.Interaction):
     await interaction.response.defer()
@@ -118,6 +135,7 @@ async def start_8s(interaction: discord.Interaction):
         await interaction.followup.send(embed=discord.Embed(title=f'8s started in {find_category.name}', color=discord.Color.green()), ephemeral=False)
     else:
         await interaction.followup.send(embed=discord.Embed(title='Setup category "Bot-8s" not found', color=discord.Color.red()), ephemeral=True)
+
 
 # optimize to only drag players who are in a team channel, if there are no players in a alpha or bravo channel, then skip that channel
 @bot.tree.command(name='drag-players')
