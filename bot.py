@@ -15,7 +15,7 @@ intents.members = True
 bot = commands.Bot(command_prefix='^', description=description, intents=intents)
 
 # Each guild has its own unique id which is associated with a list of players, each guild has 1 unique game at a time
-stored_games: dict[int, dict[str, list[str]]] = {}
+stored_games: dict[int, dict[str, list[discord.Member]]] = {}
 
 # games = {
 #     guild_id: {
@@ -34,6 +34,7 @@ async def on_ready():
 
 def get_category(interaction: discord.Interaction):
     return discord.utils.get(interaction.guild.categories, name='Bot-8s')
+
 
 # TODO
 # Able to create multiple 8s categories per server
@@ -128,10 +129,10 @@ async def start_8s(interaction: discord.Interaction):
         # if lobby_count < 8:
         #     await interaction.followup.send_message(embed=discord.Embed(title='Not enough players', color=discord.Color.red()), ephemeral=False)
         # else:
-        stored_games[interaction.guild.id] = [
-            member.id for member in
-            discord.utils.get(find_category.voice_channels, name='Lobby-8s').members
-        ]
+        stored_games.setdefault(interaction.guild.id, {})
+        stored_games[interaction.guild.id][interaction.user.id] = discord.utils.get(
+            find_category.voice_channels, name='Lobby-8s'
+        ).members
         print(stored_games)
         await interaction.followup.send(embed=discord.Embed(title=f'8s started in {find_category.name}', color=discord.Color.green()), ephemeral=False)
     else:
@@ -172,12 +173,46 @@ async def delete_setup(interaction: discord.Interaction):
         await interaction.response.send_message(embed=discord.Embed(title='Setup category "Bot-8s" not found', color=discord.Color.red()), ephemeral=True)
 
 
+@bot.tree.command(name='shuffle')
+async def shuffle(interaction: discord.Interaction):
+    if length := len(discord.utils.get(get_category(interaction).voice_channels, name='Lobby-8s').members) < 8:
+        await interaction.response.send_message(f'{8-length} more player(s) must join the lobby')
+        return
+    lobby = stored_games[interaction.guild.id][interaction.user.id]
+
+    # Separate members by roles
+    backlines = [m for m in lobby if any(r.name == 'backline' for r in m.roles)]
+    supports = [m for m in lobby if any(r.name == 'support' for r in m.roles)]
+    slayers = [m for m in lobby if any(r.name == 'slayer' for r in m.roles)]
+
+    # Ensure correct role distribution
+    if len(backlines) != 2 or len(supports) != 2 or len(slayers) != 4:
+        await interaction.response.send_message("Invalid role distribution. Make sure there are exactly 2 backlines, 2 supports, and 4 slayers.")
+        return
+
+    # Shuffle and assign teams
+    random.shuffle(slayers)  # Randomize slayers
+
+    team_alpha = [backlines.pop(), supports.pop(), slayers.pop(), slayers.pop()]
+    team_bravo = [backlines.pop(), supports.pop(), slayers.pop(), slayers.pop()]
+
+    alpha_channel = discord.utils.get(get_category(interaction).voice_channels, name='Alpha-8s')
+    bravo_channel = discord.utils.get(get_category(interaction).voice_channels, name='Bravo-8s')
+
+    # Move players to their respective teams
+    for member in team_alpha:
+        await member.move_to(alpha_channel)
+    for member in team_bravo:
+        await member.move_to(bravo_channel)
+
+    await interaction.response.send_message("Teams have been shuffled successfully!")
+
+
 @bot.tree.command(name='export-members')
 async def dm_typos(interaction: discord.Interaction):
     await interaction.response.defer()
     for member in interaction.guild.members:
         await interaction.user.send(f'{member.name}, {member.id}')
-
     await interaction.followup.send(embed=discord.Embed(title='Exported members', color=discord.Color.green()), ephemeral=False)
 
 
