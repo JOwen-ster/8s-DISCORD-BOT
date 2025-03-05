@@ -17,18 +17,23 @@ bot = commands.Bot(command_prefix='^', description=description, intents=intents)
 
 # Each guild has its own unique id which is associated with a list of players, each guild has 1 unique game at a time
 # "data" "base"
+# instead each creators id's value being a dict, it should be an object
 stored_games: dict[int, dict[int, list[discord.Member]]] = defaultdict(
     lambda: defaultdict(
         lambda: {'players': [], 'split-roles': []}
         )
     )
+game_states = defaultdict(lambda: defaultdict(object))
 
-# games = {
+# MIGRATE TO THIS
+# games_states = {
+#     12345: {67890: object},
+#     ...
+# }
+
+# stored_games = {
 #     guild_id: {
-#         'game_id': {
-#             'players': [],
-#             'split-roles': [],    
-#         },
+#         'game_id': object
 #         ...
 #     },
 #     ...
