@@ -18,6 +18,7 @@ bot = commands.Bot(command_prefix='^', description=description, intents=intents)
 class GameState:
     def __init__(self, creator_id, players, backlines, supports, slayers):
         self.creator_id: int = creator_id
+        self.game_category: discord.CategoryChannel = None
         self.players: list[discord.Member] = players
         self.backlines: list[discord.Member] = []
         self.supports: list[discord.Member] = []
