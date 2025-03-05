@@ -15,6 +15,14 @@ intents.members = True
 
 bot = commands.Bot(command_prefix='^', description=description, intents=intents)
 
+class GameState:
+    def __init__(self, creator_id, players, backlines, supports, slayers):
+        self.creator_id: int = creator_id
+        self.players: list[discord.Member] = players
+        self.backlines: list[discord.Member] = []
+        self.supports: list[discord.Member] = []
+        self.slayers: list[discord.Member] = []
+
 # Each guild has its own unique id which is associated with a list of players, each guild has 1 unique game at a time
 # "data" "base"
 # instead each creators id's value being a dict, it should be an object
@@ -23,7 +31,7 @@ stored_games: dict[int, dict[int, list[discord.Member]]] = defaultdict(
         lambda: {'players': [], 'split-roles': []}
         )
     )
-game_states = defaultdict(lambda: defaultdict(object))
+game_states = defaultdict(lambda: defaultdict(GameState))
 
 # MIGRATE TO THIS
 # games_states = {
@@ -47,22 +55,8 @@ async def on_ready():
 
 @bot.event
 async def on_voice_state_update(member: discord.Member, before: discord.VoiceState, after: discord.VoiceState):
-    # Check if user moved to a channel in a category starting with '8s-'
-    if before.channel and before.channel.category:
-        category = before.channel.category
-    elif after.channel and after.channel.category:
-        category = after.channel.category
-    
-    if category and category.name.startswith('8s-'):
-        # Delete category and its channels if all voice channels are empty
-        voice_channels = [ch for ch in category.voice_channels]
-        if all(len(vc.members) == 0 for vc in voice_channels):
-            for channel in category.channels:
-                await channel.delete()
-            await category.delete()
-
-    # Check if the user joined 'Lobby-Create' and create the necessary channels
-    if before.channel and before.channel.name == 'Lobby-Create':
+    # Check if the user joined 'Lobby-Create'
+    if after.channel and after.channel.name == 'Lobby-Create':
         guild = member.guild
         existing_category = discord.utils.get(guild.categories, name=f'8s-{member.id}')
         if existing_category:
@@ -90,8 +84,22 @@ async def on_voice_state_update(member: discord.Member, before: discord.VoiceSta
         await created_category.create_voice_channel(name='Alpha-8s', user_limit=4)
         await created_category.create_voice_channel(name='Bravo-8s', user_limit=4)
 
-        # Move the member to the Lobby-8s voice channel
-        await member.move_to(discord.utils.get(created_category.voice_channels, name='Lobby-8s'))
+        # Move the member to the newly created 'Lobby-8s' voice channel
+        lobby_channel = discord.utils.get(created_category.voice_channels, name='Lobby-8s')
+        if lobby_channel:
+            await member.move_to(lobby_channel)
+
+    # Check if the user left a category starting with '8s-' and delete it if empty
+    if before.channel and before.channel.category and before.channel.category.name.startswith('8s-'):
+        category = before.channel.category
+        voice_channels = category.voice_channels
+
+        # Check if all voice channels in the category are empty
+        if all(len(vc.members) == 0 for vc in voice_channels):
+            for channel in category.channels:
+                await channel.delete()
+            await category.delete()
+
 
 
 def get_category(interaction: discord.Interaction):
@@ -266,7 +274,7 @@ async def delete_setup(interaction: discord.Interaction):
 async def shuffle(interaction: discord.Interaction):
     await interaction.response.defer()
     await drag_players(interaction)
-    await interaction.followup.send(embed=discord.Embed(title='Shuffle complete', color=discord.Color.green()), ephemeral=False)q
+    await interaction.followup.send(embed=discord.Embed(title='Shuffle complete', color=discord.Color.green()), ephemeral=False)
 
 
 @bot.tree.command(name='export-members')
