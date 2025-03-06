@@ -1,5 +1,5 @@
 import discord
-from discord.ui import Select, View
+from discord.ui import Select, View, Button
 from discord.ext import commands
 import random
 from collections import defaultdict
@@ -14,9 +14,39 @@ intents = discord.Intents.default()
 intents.members = True
 
 bot = commands.Bot(command_prefix='^', description=description, intents=intents)
+# Users are able to generate a lobby using a generator voice channel
+# Other users can fil up the lobby 
+# when the lobby has 8 people, it can then be started using /start-8s
+# If the game is started, the game can be ended using /end-8s or the button on the view
+# If a game is started, do not allow users in that started game to generate or join a new lobby/team channel
+# Add a /leave game command, this will drag everyone back to the lobby
+#set the state to not started, reset the lists, removes game roles from leaver
+#if the creator leaves, delete the game state and category
+# LOCK ALPHA AND BRAVO CHANNELS SO USERS CAN ONLY JOIN BY BEING MOVED BY THE BOT
 
+
+
+class GameView(View):
+    def __init__(self):
+        super().__init__()
+        self.shuffle_button = None
+        self.end_button = None
+
+    @discord.ui.button(label="Shuffle", style=discord.ButtonStyle.blurple)
+    async def shuffle(self, interaction: discord.Interaction, button: Button):
+        self.shuffle_button = button
+        await interaction.response.send_message("Shuffling the game!", ephemeral=True)
+        # call shuffle method
+
+    @discord.ui.button(label="End Game", style=discord.ButtonStyle.danger)
+    async def end_game(self, interaction: discord.Interaction, button: Button):
+        self.end_button = button
+        for child in self.children:
+            child.disabled = True  # Disable buttons after ending the game
+        await interaction.response.edit_message(content="Game Over!", view=self)
+        
 class GameState:
-    def __init__(self, creator_id):
+    def __init__(self, creator_id: int=None):
         self.creator_id: int = creator_id
         self.players: list[discord.Member] = []
         self.backlines: list[discord.Member] = []
@@ -27,6 +57,8 @@ class GameState:
         self.alpha_channel: discord.VoiceChannel = None
         self.bravo_channel: discord.VoiceChannel = None
         self.lobby_channel: discord.VoiceChannel = None
+        self.isStarted: bool = False
+        self.controls: discord.ui.View = None
 # Each guild has its own unique id which is associated with a list of players, each guild has 1 unique game at a time
 # "data" "base"
 # instead each creators id's value being a dict, it should be an object
@@ -62,7 +94,7 @@ async def on_voice_state_update(member: discord.Member, before: discord.VoiceSta
     # Check if the user joined 'Lobby-Create'
     current_guild = member.guild
     if after.channel and after.channel.name == 'Lobby-Create':
-        
+        # TODO
         if any(member.id in game_states[guild_id] for guild_id in game_states):
             await member.send(embed=discord.Embed(title='You currently have a lobby created, please empty it.', color=discord.Color.red()))
             await member.move_to(None)
@@ -105,7 +137,8 @@ async def on_voice_state_update(member: discord.Member, before: discord.VoiceSta
             for channel in category.channels:
                 await channel.delete()
             await category.delete()
-            del game_states[category.guild.id][member.id]
+            if any(member.id in game_states[guild_id] for guild_id in game_states):
+                del game_states[category.guild.id][member.id]
 
 
 def get_category(interaction: discord.Interaction):
@@ -154,30 +187,36 @@ async def set_role(interaction: discord.Interaction):
 
 @bot.tree.command(name='remove-role')
 async def remove_role(interaction: discord.Interaction):
-    removed_roles = []
-    for role in interaction.user.roles:
-        try:
-            if role.name in ['backline', 'support', 'slayer']:
-                await interaction.user.remove_roles(role)
-                removed_roles.append(role.name)
-        except discord.errors.Forbidden:
-            await interaction.response.send_message(f"I do not have permission to remove {role.name}, skipping...", ephemeral=True)
-            pass
+    await interaction.response.defer()
+    target_roles = set("backline", "support", "slayer")
+    user_roles = [role for role in interaction.user.roles if role.name in target_roles]
 
-    await interaction.response.send_message(f"I removed the following roles: {', '.join(removed_roles)}", ephemeral=True) if removed_roles else await interaction.response.send_message("You do not have any roles to remove", ephemeral=True)
+    if not user_roles:
+        await interaction.response.send_message("You do not have any roles to remove", ephemeral=True)
+        return
+
+    removed_roles = []
+    for role in user_roles:
+        try:
+            await interaction.user.remove_roles(role)
+            removed_roles.append(role.name)
+        except discord.Forbidden:
+            await interaction.followup.send(
+                f"I do not have permission to remove {role.name}, skipping...",
+                ephemeral=True
+            )
+
+    await interaction.response.send_message(
+        f"I removed the following roles: {', '.join(removed_roles)}", ephemeral=True
+    )
 
 
 # TODO
 # Posssibly have it so when starting a game, 8 dropdowns (linked to the 8 people currently in the lobby channel) appear that will each ask for a members player role
-# Also lock the lobby channel so only the players can join
+# Lock lobby, alpha, and bravo channels so only the players can join
 # Create a way to leave a game and have the roles removed from the user
-# Create a way to end a game, remove the roles from the users, and remove the creator's user id from the stored_games
-# Delete that ended games category
-
-# could make a generator channel
-# creates a category with 3 voice channels and 1 text channel
-# auto delete the 8s-user.id categrory along with its children channels
-#after no memebers are in any of the voice channels
+# Create a way to end a game, remove the roles from all the users, and remove the creator's user id from the game_states
+# If a member is in a lobby, then that lobby gets started, do not allow them to join another lobby or create one until they leave that game
 @bot.tree.command(name='start-8s')
 async def start_8s(interaction: discord.Interaction):
     await interaction.response.defer()
@@ -190,18 +229,19 @@ async def start_8s(interaction: discord.Interaction):
         # else:
         for guild in bot.guilds:
             if discord.utils.get(guild.categories, name=f'8s-{interaction.user.id}'):
-                await interaction.followup.send_message(embed=discord.Embed(title='You are already in a game', color=discord.Color.red()), ephemeral=False)
+                await interaction.followup.send_message(embed=discord.Embed(title='You currently have an outstanding game category created, please end it or have everyone leave', color=discord.Color.red()), ephemeral=False)
                 return
 
         game_states[interaction.guild.id][interaction.user.id] = GameState(interaction.user.id)
-        lobby = discord.utils.get(find_category.voice_channels, name='Lobby-8s').members
-        game_states[interaction.guild.id][interaction.user.id].players = lobby
-        game_states[interaction.guild.id][interaction.user.id].category = find_category
-        game_states[interaction.guild.id][interaction.user.id].rules_channel = discord.utils.get(find_category.text_channels, name='rules-8s')
-        game_states[interaction.guild.id][interaction.user.id].alpha_channel = discord.utils.get(find_category.voice_channels, name='Alpha-8s')
-        game_states[interaction.guild.id][interaction.user.id].bravo_channel = discord.utils.get(find_category.voice_channels, name='Bravo-8s')
-        game_states[interaction.guild.id][interaction.user.id].lobby_channel = discord.utils.get(find_category.voice_channels, name='Lobby-8s')
         current_state = game_states[interaction.guild.id][interaction.user.id]
+        lobby = discord.utils.get(find_category.voice_channels, name='Lobby-8s').members
+        current_state.players = lobby
+        current_state.category = find_category
+        current_state.rules_channel = discord.utils.get(find_category.text_channels, name='rules-8s')
+        current_state.alpha_channel = discord.utils.get(find_category.voice_channels, name='Alpha-8s')
+        current_state.bravo_channel = discord.utils.get(find_category.voice_channels, name='Bravo-8s')
+        current_state.lobby_channel = discord.utils.get(find_category.voice_channels, name='Lobby-8s')
+        current_state.controls = GameView()
         role_mapping = {
             "backline": [],
             "support": [],
@@ -242,7 +282,7 @@ async def start_8s(interaction: discord.Interaction):
         teamsEmbed.add_field(name='Bravo Backline', value=team_bravo[0].name, inline=True)
         teamsEmbed.add_field(name='Bravo Support', value=team_bravo[1].name, inline=True)
         teamsEmbed.add_field(name='Bravo Slayers', value=team_bravo[2].name + ' and ' + team_bravo[3].name, inline=True)
-        await interaction.followup.send(embed=teamsEmbed)
+        await interaction.followup.send(embed=teamsEmbed, view=current_state.controls, ephemeral=False)
     else:
         await interaction.followup.send(embed=discord.Embed(title='Setup category "Bot-8s" not found', color=discord.Color.red()), ephemeral=True)
 
@@ -262,6 +302,16 @@ async def drag_players(interaction: discord.Interaction):
         await interaction.followup.send(embed=discord.Embed(title='Setup category "Bot-8s" not found or there are no players for a team', color=discord.Color.red()), ephemeral=True)
 
 
+@bot.tree.command(name='end-8s')
+async def end_8s(interaction: discord.Interaction):
+    await interaction.response.defer()
+    creator = interaction.user
+    await drag_players(interaction)
+    creator_lobby = game_states[interaction.guild.id][creator.id].lobby_channel
+    for member in creator_lobby.members:
+        await member.move_to(None)
+    await interaction.followup.send(embed=discord.Embed(title='8s game ended', color=discord.Color.green()), ephemeral=False)
+
 @bot.tree.command(name='delete-setup')
 async def delete_setup(interaction: discord.Interaction):
     found_setup_category = get_category(interaction)
@@ -280,11 +330,10 @@ async def delete_setup(interaction: discord.Interaction):
     else:
         await interaction.response.send_message(embed=discord.Embed(title='Setup category "Bot-8s" not found', color=discord.Color.red()), ephemeral=True)
 
-
-@bot.tree.command(name='shuffle')
+# take in user and then lookup the game state and shuffle the players
 async def shuffle(interaction: discord.Interaction):
     await interaction.response.defer()
-    await drag_players(interaction)
+    creator_state = game_states[interaction.guild.id][interaction.user.id]
     await interaction.followup.send(embed=discord.Embed(title='Shuffle complete', color=discord.Color.green()), ephemeral=False)
 
 
