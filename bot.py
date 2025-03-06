@@ -16,13 +16,17 @@ intents.members = True
 bot = commands.Bot(command_prefix='^', description=description, intents=intents)
 
 class GameState:
-    def __init__(self, creator_id, players, backlines, supports, slayers):
+    def __init__(self, creator_id):
         self.creator_id: int = creator_id
-        self.players: list[discord.Member] = players
+        self.players: list[discord.Member] = []
         self.backlines: list[discord.Member] = []
         self.supports: list[discord.Member] = []
         self.slayers: list[discord.Member] = []
-
+        self.lobby_category: discord.CategoryChannel = None
+        self.rules_channel: discord.TextChannel = None
+        self.alpha_channel: discord.VoiceChannel = None
+        self.bravo_channel: discord.VoiceChannel = None
+        self.lobby_channel: discord.VoiceChannel = None
 # Each guild has its own unique id which is associated with a list of players, each guild has 1 unique game at a time
 # "data" "base"
 # instead each creators id's value being a dict, it should be an object
@@ -56,19 +60,21 @@ async def on_ready():
 @bot.event
 async def on_voice_state_update(member: discord.Member, before: discord.VoiceState, after: discord.VoiceState):
     # Check if the user joined 'Lobby-Create'
+    current_guild = member.guild
     if after.channel and after.channel.name == 'Lobby-Create':
-        guild = member.guild
-        existing_category = discord.utils.get(guild.categories, name=f'8s-{member.id}')
-        if existing_category:
-            return  # If category already exists, don't create it again
+        
+        if any(member.id in game_states[guild_id] for guild_id in game_states):
+            await member.send(embed=discord.Embed(title='You currently have a lobby created, please empty it.', color=discord.Color.red()))
+            await member.move_to(None)
+            return
         
         # Create the new category and channels
-        created_category = await guild.create_category(name=f'8s-{member.id}')
+        created_category = await current_guild.create_category(name=f'8s-{member.id}')
         rules_channel = await created_category.create_text_channel(name='rules-8s')
 
         # Set permissions for the rules channel
         overwrite = discord.PermissionOverwrite(send_messages=False)
-        await rules_channel.set_permissions(guild.default_role, overwrite=overwrite)
+        await rules_channel.set_permissions(current_guild.default_role, overwrite=overwrite)
 
         # Create and send an embed with rules
         rules_embed = discord.Embed(
@@ -99,11 +105,11 @@ async def on_voice_state_update(member: discord.Member, before: discord.VoiceSta
             for channel in category.channels:
                 await channel.delete()
             await category.delete()
-
+            del game_states[category.guild.id][member.id]
 
 
 def get_category(interaction: discord.Interaction):
-    return discord.utils.get(interaction.guild.categories, name='Bot-8s')
+    return discord.utils.get(interaction.guild.categories, name=f'8s-{interaction.user.id}')
 
 
 # TODO
@@ -116,6 +122,7 @@ def get_category(interaction: discord.Interaction):
 async def setup_channels(interaction: discord.Interaction):
     bot_category = await interaction.guild.create_category(name='Bot-8s')
     await bot_category.create_voice_channel(name='Lobby-Create', user_limit=1)
+
 
 class Dropdown(Select):
     def __init__(self):
@@ -132,6 +139,7 @@ class Dropdown(Select):
         except discord.errors.Forbidden:
             await interaction.response.send_message(f"I do not have permission to give {interaction.user.mention} the role {self.values[0]}", ephemeral=True)
         await interaction.response.send_message(f"You selected: {self.values[0]}", ephemeral=True)
+
 
 class DropdownView(View):
     def __init__(self):
@@ -180,12 +188,20 @@ async def start_8s(interaction: discord.Interaction):
         # if lobby_count < 8:
         #     await interaction.followup.send_message(embed=discord.Embed(title='Not enough players', color=discord.Color.red()), ephemeral=False)
         # else:
-        if stored_games[interaction.guild.id][interaction.user.id]:
-            await interaction.followup.send_message(embed=discord.Embed(title='You are already in a game', color=discord.Color.red()), ephemeral=False)
-            return
-        
+        for guild in bot.guilds:
+            if discord.utils.get(guild.categories, name=f'8s-{interaction.user.id}'):
+                await interaction.followup.send_message(embed=discord.Embed(title='You are already in a game', color=discord.Color.red()), ephemeral=False)
+                return
+
+        game_states[interaction.guild.id][interaction.user.id] = GameState(interaction.user.id)
         lobby = discord.utils.get(find_category.voice_channels, name='Lobby-8s').members
-        stored_games[interaction.guild.id][interaction.user.id]['players'] = lobby
+        game_states[interaction.guild.id][interaction.user.id].players = lobby
+        game_states[interaction.guild.id][interaction.user.id].category = find_category
+        game_states[interaction.guild.id][interaction.user.id].rules_channel = discord.utils.get(find_category.text_channels, name='rules-8s')
+        game_states[interaction.guild.id][interaction.user.id].alpha_channel = discord.utils.get(find_category.voice_channels, name='Alpha-8s')
+        game_states[interaction.guild.id][interaction.user.id].bravo_channel = discord.utils.get(find_category.voice_channels, name='Bravo-8s')
+        game_states[interaction.guild.id][interaction.user.id].lobby_channel = discord.utils.get(find_category.voice_channels, name='Lobby-8s')
+        current_state = game_states[interaction.guild.id][interaction.user.id]
         role_mapping = {
             "backline": [],
             "support": [],
@@ -197,31 +213,26 @@ async def start_8s(interaction: discord.Interaction):
                     role_mapping[role_name].append(member)
 
         # Separate members by roles
-        backlines = role_mapping["backline"]
-        supports = role_mapping['support']
-        slayers = role_mapping["slayer"]
-        
-        stored_games[interaction.guild.id][interaction.user.id]['split-roles'] = [backlines, supports, slayers]
+        current_state.backlines = role_mapping["backline"]
+        current_state.supports = role_mapping['support']
+        current_state.slayers = role_mapping["slayer"]
 
         # Ensure correct role distribution
-        if len(backlines) != 2 or len(supports) != 2 or len(slayers) != 4:
+        if len(current_state.backlines) != 2 or len(current_state.supports) != 2 or len(current_state.slayers) != 4:
             await interaction.response.send_message("Invalid role distribution. Make sure there are exactly 2 backlines, 2 supports, and 4 slayers.")
             return
 
         # Shuffle and assign teams
-        random.shuffle(slayers)  # Randomize slayers
+        random.shuffle(current_state.slayers)  # Randomize slayers
 
-        team_alpha = [backlines.pop(), supports.pop(), slayers.pop(), slayers.pop()]
-        team_bravo = [backlines.pop(), supports.pop(), slayers.pop(), slayers.pop()]
-
-        alpha_channel = discord.utils.get(get_category(interaction).voice_channels, name='Alpha-8s')
-        bravo_channel = discord.utils.get(get_category(interaction).voice_channels, name='Bravo-8s')
+        team_alpha = [current_state.backlines.pop(), current_state.supports.pop(), current_state.slayers.pop(), current_state.slayers.pop()]
+        team_bravo = [current_state.backlines.pop(), current_state.supports.pop(), current_state.slayers.pop(), current_state.slayers.pop()]
 
         # Move players to their respective teams
         for member in team_alpha:
-            await member.move_to(alpha_channel)
+            await member.move_to(current_state.alpha_channel)
         for member in team_bravo:
-            await member.move_to(bravo_channel)
+            await member.move_to(current_state.bravo_channel)
 
         print(stored_games)
         teamsEmbed = discord.Embed(title='Teams', color=discord.Color.black())
