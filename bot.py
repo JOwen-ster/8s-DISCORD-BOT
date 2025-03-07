@@ -44,7 +44,7 @@ class GameView(View):
         for child in self.children:
             child.disabled = True  # Disable buttons after ending the game
         await interaction.response.edit_message(content="Game Over!", view=self)
-        
+
 class GameState:
     def __init__(self, creator_id: int=None):
         self.creator_id: int = creator_id
@@ -121,7 +121,8 @@ async def on_voice_state_update(member: discord.Member, before: discord.VoiceSta
         await created_category.create_voice_channel(name='Lobby-8s', user_limit=8)
         await created_category.create_voice_channel(name='Alpha-8s', user_limit=4)
         await created_category.create_voice_channel(name='Bravo-8s', user_limit=4)
-
+        # /start will only work in this channel
+        await created_category.create_text_channel(name='Chat-8s')
         # Move the member to the newly created 'Lobby-8s' voice channel
         lobby_channel = discord.utils.get(created_category.voice_channels, name='Lobby-8s')
         if lobby_channel:
