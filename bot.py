@@ -23,7 +23,7 @@ bot = commands.Bot(command_prefix='^', description=description, intents=intents)
 #set the state to not started, reset the lists, removes game roles from leaver
 #if the creator leaves, delete the game state and category
 # LOCK ALPHA AND BRAVO CHANNELS SO USERS CAN ONLY JOIN BY BEING MOVED BY THE BOT
-
+ENV_DEBUG = True
 
 
 class GameView(View):
@@ -52,12 +52,15 @@ class GameState:
         self.backlines: list[discord.Member] = []
         self.supports: list[discord.Member] = []
         self.slayers: list[discord.Member] = []
+        self.alpha_team: list[discord.Member] = []
+        self.bravo_team: list[discord.Member] = []
         self.lobby_category: discord.CategoryChannel = None
         self.rules_channel: discord.TextChannel = None
         self.alpha_channel: discord.VoiceChannel = None
         self.bravo_channel: discord.VoiceChannel = None
         self.lobby_channel: discord.VoiceChannel = None
         self.isStarted: bool = False
+        self.game_embed: discord.Embed = None
         self.controls: discord.ui.View = None
 # Each guild has its own unique id which is associated with a list of players, each guild has 1 unique game at a time
 # "data" "base"
@@ -75,14 +78,6 @@ game_states = defaultdict(lambda: defaultdict(GameState))
 #     ...
 # }
 
-# stored_games = {
-#     guild_id: {
-#         'game_id': object
-#         ...
-#     },
-#     ...
-# }
-
 @bot.event
 async def on_ready():
     await bot.tree.sync()
@@ -92,6 +87,8 @@ async def on_ready():
 @bot.event
 async def on_voice_state_update(member: discord.Member, before: discord.VoiceState, after: discord.VoiceState):
     # Check if the user joined 'Lobby-Create'
+    # if user has a category and lobby channel, drag them to their lobby
+    # if user starts a game, do not allow them to join another game
     current_guild = member.guild
     if after.channel and after.channel.name == 'Lobby-Create':
         # TODO
@@ -223,14 +220,27 @@ async def start_8s(interaction: discord.Interaction):
     await interaction.response.defer()
     find_category = get_category(interaction)
     if find_category:
-        lobby_count = len(discord.utils.get(find_category.voice_channels, name='Lobby-8s').members)
-        print(lobby_count)
-        # if lobby_count < 8:
-        #     await interaction.followup.send_message(embed=discord.Embed(title='Not enough players', color=discord.Color.red()), ephemeral=False)
-        # else:
-        for guild in bot.guilds:
-            if discord.utils.get(guild.categories, name=f'8s-{interaction.user.id}'):
-                await interaction.followup.send_message(embed=discord.Embed(title='You currently have an outstanding game category created, please end it or have everyone leave', color=discord.Color.red()), ephemeral=False)
+        current_lobby_obj = discord.utils.get(find_category.voice_channels, name='Lobby-8s')
+        if current_lobby_obj and current_lobby_obj.members:
+            current_lobby_count = len(current_lobby_obj.members)
+        else:
+            await interaction.followup.send_message(embed=discord.Embed(title='Not enough players', color=discord.Color.red()), ephemeral=False)
+            return
+        if not ENV_DEBUG:
+            if current_lobby_count < 8:
+                await interaction.followup.send_message(embed=discord.Embed(title='Not enough players', color=discord.Color.red()), ephemeral=False)
+                return
+            elif interaction.user not in current_lobby_obj.members:
+                await interaction.followup.send_message(embed=discord.Embed(title=f'{interaction.user.mention} is in the lobby', color=discord.Color.red()), ephemeral=False)
+                return
+            if any(discord.utils.get(guild.categories, name=f'8s-{interaction.user.id}') for guild in bot.guilds):
+                await interaction.followup.send_message(
+                    embed=discord.Embed(
+                        title='You currently have an outstanding game category created, please end it or have everyone leave',
+                        color=discord.Color.red()
+                    ),
+                    ephemeral=False
+                )
                 return
 
         game_states[interaction.guild.id][interaction.user.id] = GameState(interaction.user.id)
@@ -268,7 +278,8 @@ async def start_8s(interaction: discord.Interaction):
 
         team_alpha = [current_state.backlines.pop(), current_state.supports.pop(), current_state.slayers.pop(), current_state.slayers.pop()]
         team_bravo = [current_state.backlines.pop(), current_state.supports.pop(), current_state.slayers.pop(), current_state.slayers.pop()]
-
+        current_state.controls.alpha_team = team_alpha
+        current_state.controls.bravo_team = team_bravo
         # Move players to their respective teams
         for member in team_alpha:
             await member.move_to(current_state.alpha_channel)
@@ -283,7 +294,8 @@ async def start_8s(interaction: discord.Interaction):
         teamsEmbed.add_field(name='Bravo Backline', value=team_bravo[0].name, inline=True)
         teamsEmbed.add_field(name='Bravo Support', value=team_bravo[1].name, inline=True)
         teamsEmbed.add_field(name='Bravo Slayers', value=team_bravo[2].name + ' and ' + team_bravo[3].name, inline=True)
-        await interaction.followup.send(embed=teamsEmbed, view=current_state.controls, ephemeral=False)
+        current_state.game_emebed = teamsEmbed
+        await interaction.followup.send(embed=current_state.game_emebed, view=current_state.controls, ephemeral=False)
     else:
         await interaction.followup.send(embed=discord.Embed(title='Setup category "Bot-8s" not found', color=discord.Color.red()), ephemeral=True)
 
