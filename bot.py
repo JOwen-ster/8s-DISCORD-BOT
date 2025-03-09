@@ -35,9 +35,17 @@ class GameView(View):
     @discord.ui.button(label="Shuffle", style=discord.ButtonStyle.blurple)
     async def shuffle(self, interaction: discord.Interaction, button: Button):
         self.shuffle_button = button
-        await interaction.response.send_message("Shuffling the game!", ephemeral=True)
         # call shuffle method
-        # should check if their are still 8 players ifd not drag to lobby and end game
+        # should check if their are still 8 players if not drag to lobby and end game
+        game_states[interaction.guild.id][interaction.user.id].alpha_team['support_a'],
+        game_states[interaction.guild.id][interaction.user.id].bravo_team['support_b'] = game_states[interaction.guild.id][interaction.user.id].bravo_team['support_b'],
+        game_states[interaction.guild.id][interaction.user.id].alpha_team['support_a']
+        random.shuffle(game_states[interaction.guild.id][interaction.user.id].slayers)
+        game_states[interaction.guild.id][interaction.user.id].alpha_team['slayers_a'] = game_states[interaction.guild.id][interaction.user.id].slayers[0]
+        game_states[interaction.guild.id][interaction.user.id].alpha_team['slayers_a2'] = game_states[interaction.guild.id][interaction.user.id].slayers[1]
+        game_states[interaction.guild.id][interaction.user.id].bravo_team['slayers_b'] = game_states[interaction.guild.id][interaction.user.id].slayers[2]
+        game_states[interaction.guild.id][interaction.user.id].bravo_team['slayers_b2'] = game_states[interaction.guild.id][interaction.user.id].slayers[3]
+        await interaction.response.send_message("Shuffling the game!", ephemeral=True)
 
     @discord.ui.button(label="End Game", style=discord.ButtonStyle.danger)
     async def end_game(self, interaction: discord.Interaction, button: Button):
@@ -53,8 +61,8 @@ class GameState:
         self.backlines: list[discord.Member] = []
         self.supports: list[discord.Member] = []
         self.slayers: list[discord.Member] = []
-        self.alpha_team: list[discord.Member] = []
-        self.bravo_team: list[discord.Member] = []
+        self.alpha_team: dict[str:discord.Member] = {}
+        self.bravo_team: dict[str:discord.Member] = {}
         self.lobby_category: discord.CategoryChannel = None
         self.rules_channel: discord.TextChannel = None
         self.alpha_channel: discord.VoiceChannel = None
@@ -251,19 +259,18 @@ async def start_8s(interaction: discord.Interaction):
                 return
 
         game_states[interaction.guild.id][interaction.user.id] = GameState(interaction.user.id)
-        current_state = game_states[interaction.guild.id][interaction.user.id]
         lobby = discord.utils.get(find_category.voice_channels, name='Lobby-8s').members
-        current_state.players = lobby
-        current_state.category = find_category
-        current_state.rules_channel = discord.utils.get(find_category.text_channels, name='rules-8s')
-        current_state.alpha_channel = discord.utils.get(find_category.voice_channels, name='Alpha-8s')
-        current_state.bravo_channel = discord.utils.get(find_category.voice_channels, name='Bravo-8s')
-        current_state.lobby_channel = discord.utils.get(find_category.voice_channels, name='Lobby-8s')
-        current_state.controls = GameView()
+        game_states[interaction.guild.id][interaction.user.id].players = lobby
+        game_states[interaction.guild.id][interaction.user.id].category = find_category
+        game_states[interaction.guild.id][interaction.user.id].rules_channel = discord.utils.get(find_category.text_channels, name='rules-8s')
+        game_states[interaction.guild.id][interaction.user.id].alpha_channel = discord.utils.get(find_category.voice_channels, name='Alpha-8s')
+        game_states[interaction.guild.id][interaction.user.id].bravo_channel = discord.utils.get(find_category.voice_channels, name='Bravo-8s')
+        game_states[interaction.guild.id][interaction.user.id].lobby_channel = discord.utils.get(find_category.voice_channels, name='Lobby-8s')
+        game_states[interaction.guild.id][interaction.user.id].controls = GameView()
         role_mapping = {
-            "backline": [],
-            "support": [],
-            "slayer": []
+            "backline": ['backline1', 'backline2'],
+            "support": ['support1', 'support2'],
+            "slayer": ['slayer1', 'slayer2', 'slayer3', 'slayer4'],
         }       
         for member in lobby:
             for role_name in role_mapping:
@@ -271,9 +278,12 @@ async def start_8s(interaction: discord.Interaction):
                     role_mapping[role_name].append(member)
 
         # Separate members by roles
-        current_state.backlines = role_mapping["backline"]
-        current_state.supports = role_mapping['support']
-        current_state.slayers = role_mapping["slayer"]
+        game_states[interaction.guild.id][interaction.user.id].backlines = role_mapping["backline"]
+        game_states[interaction.guild.id][interaction.user.id].supports = role_mapping['support']
+        game_states[interaction.guild.id][interaction.user.id].slayers = role_mapping["slayer"]
+        print(game_states[interaction.guild.id][interaction.user.id].slayers)
+        print(game_states[interaction.guild.id][interaction.user.id].backlines)
+        print(game_states[interaction.guild.id][interaction.user.id].supports)
 
         # Ensure correct role distribution
         # if len(current_state.backlines) != 2 or len(current_state.supports) != 2 or len(current_state.slayers) != 4:
@@ -281,14 +291,16 @@ async def start_8s(interaction: discord.Interaction):
         #     return
 
         # Shuffle and assign teams
-        random.shuffle(current_state.slayers)  # Randomize slayers
+        random.shuffle(game_states[interaction.guild.id][interaction.user.id].slayers)  # Randomize slayers
 
         # team_alpha = [current_state.backlines.pop(), current_state.supports.pop(), current_state.slayers.pop(), current_state.slayers.pop()]
         # team_bravo = [current_state.backlines.pop(), current_state.supports.pop(), current_state.slayers.pop(), current_state.slayers.pop()]
-        team_alpha = ['backline', 'support', 'slayer', 'slayer']
-        team_bravo = ['backline2', 'support2', 'slayer2', 'slayer2']
-        current_state.controls.alpha_team = team_alpha
-        current_state.controls.bravo_team = team_bravo
+        team_alpha = {'backline_a': 'backline1', 'support_a': 'support1', 'slayer_a': 'slayer1', 'slayer_a2': 'slayer2'}
+        team_bravo = {'backline_b': 'backline2', 'support_b': 'support2', 'slayer_b': 'slayer3', 'slayer_b2': 'slayer4'}
+        print(team_alpha['support_a'])
+        print(team_bravo['support_b'])
+        game_states[interaction.guild.id][interaction.user.id].alpha_team = team_alpha
+        game_states[interaction.guild.id][interaction.user.id].bravo_team = team_bravo
         # Move players to their respective teams
         # for member in team_alpha:
         #     await member.move_to(current_state.alpha_channel)
@@ -304,14 +316,14 @@ async def start_8s(interaction: discord.Interaction):
         # teamsEmbed.add_field(name='Bravo Support', value=team_bravo[1].name, inline=True)
         # teamsEmbed.add_field(name='Bravo Slayers', value=team_bravo[2].name + ' and ' + team_bravo[3].name, inline=True)
         teamsEmbed = discord.Embed(title='Teams', color=discord.Color.blurple())
-        teamsEmbed.add_field(name='Alpha Backline', value=team_alpha[0], inline=True)
-        teamsEmbed.add_field(name='Alpha Support', value=team_alpha[1], inline=True)
-        teamsEmbed.add_field(name='Alpha Slayers', value=team_alpha[2] + ' and ' + team_alpha[3], inline=True)
-        teamsEmbed.add_field(name='Bravo Backline', value=team_bravo[0], inline=True)
-        teamsEmbed.add_field(name='Bravo Support', value=team_bravo[1], inline=True)
-        teamsEmbed.add_field(name='Bravo Slayers', value=team_bravo[2] + ' and ' + team_bravo[3], inline=True)
-        current_state.game_emebed = teamsEmbed
-        await interaction.followup.send(embed=current_state.game_emebed, view=current_state.controls, ephemeral=False)
+        teamsEmbed.add_field(name='Alpha Backline', value=team_alpha['backline_a'], inline=True)
+        teamsEmbed.add_field(name='Alpha Support', value=team_alpha['support_a'], inline=True)
+        teamsEmbed.add_field(name='Alpha Slayers', value=team_alpha['slayer_a'] + ' and ' + team_alpha['slayer_a2'], inline=True)
+        teamsEmbed.add_field(name='Bravo Backline', value=team_bravo['backline_b'], inline=True)
+        teamsEmbed.add_field(name='Bravo Support', value=team_bravo['support_b'], inline=True)
+        teamsEmbed.add_field(name='Bravo Slayers', value=team_bravo['slayer_b'] + ' and ' + team_bravo['slayer_b2'], inline=True)
+        game_states[interaction.guild.id][interaction.user.id].game_emebed = teamsEmbed
+        await interaction.followup.send(embed=game_states[interaction.guild.id][interaction.user.id].game_emebed, view=game_states[interaction.guild.id][interaction.user.id].controls, ephemeral=False)
     else:
         await interaction.followup.send(embed=discord.Embed(title='Setup category "Bot-8s" not found', color=discord.Color.red()), ephemeral=True)
 
