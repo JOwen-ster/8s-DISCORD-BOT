@@ -35,17 +35,41 @@ class GameView(View):
     @discord.ui.button(label="Shuffle", style=discord.ButtonStyle.blurple)
     async def shuffle(self, interaction: discord.Interaction, button: Button):
         self.shuffle_button = button
-        # call shuffle method
-        # should check if their are still 8 players if not drag to lobby and end game
-        game_states[interaction.guild.id][interaction.user.id].alpha_team['support_a'],
-        game_states[interaction.guild.id][interaction.user.id].bravo_team['support_b'] = game_states[interaction.guild.id][interaction.user.id].bravo_team['support_b'],
-        game_states[interaction.guild.id][interaction.user.id].alpha_team['support_a']
-        random.shuffle(game_states[interaction.guild.id][interaction.user.id].slayers)
-        game_states[interaction.guild.id][interaction.user.id].alpha_team['slayers_a'] = game_states[interaction.guild.id][interaction.user.id].slayers[0]
-        game_states[interaction.guild.id][interaction.user.id].alpha_team['slayers_a2'] = game_states[interaction.guild.id][interaction.user.id].slayers[1]
-        game_states[interaction.guild.id][interaction.user.id].bravo_team['slayers_b'] = game_states[interaction.guild.id][interaction.user.id].slayers[2]
-        game_states[interaction.guild.id][interaction.user.id].bravo_team['slayers_b2'] = game_states[interaction.guild.id][interaction.user.id].slayers[3]
-        await interaction.response.send_message("Shuffling the game!", ephemeral=True)
+    
+        # Reference the current game state
+        game_state = game_states[interaction.guild.id][interaction.user.id]
+    
+        # Swap support players
+        game_state.alpha_team['support_a'], game_state.bravo_team['support_b'] = (
+            game_state.bravo_team['support_b'], 
+            game_state.alpha_team['support_a']
+        )
+    
+        # Shuffle slayers
+        random.shuffle(game_state.slayers)
+    
+        # Reassign slayers to teams
+        game_state.alpha_team['slayers_a'] = game_state.slayers[0]
+        game_state.alpha_team['slayers_a2'] = game_state.slayers[1]
+        game_state.bravo_team['slayers_b'] = game_state.slayers[2]
+        game_state.bravo_team['slayers_b2'] = game_state.slayers[3]
+    
+        # Update the embed with new team information
+        new_embed = discord.Embed(title='Teams', color=discord.Color.blurple())
+        new_embed.add_field(name='Alpha Backline', value=game_state.alpha_team['backline_a'], inline=True)
+        new_embed.add_field(name='Alpha Support', value=game_state.alpha_team['support_a'], inline=True)
+        new_embed.add_field(name='Alpha Slayers', value=game_state.alpha_team['slayers_a'] + ' and ' + game_state.alpha_team['slayers_a2'], inline=True)
+        new_embed.add_field(name='Bravo Backline', value=game_state.bravo_team['backline_b'], inline=True)
+        new_embed.add_field(name='Bravo Support', value=game_state.bravo_team['support_b'], inline=True)
+        new_embed.add_field(name='Bravo Slayers', value=game_state.bravo_team['slayers_b'] + ' and ' + game_state.bravo_team['slayers_b2'], inline=True)
+    
+        # Save updated embed in game state
+        game_state.game_embed = new_embed
+    
+        # Edit the original message instead of sending a new one
+        await interaction.response.edit_message(embed=game_state.game_embed)
+    
+        await interaction.followup.send("Shuffling complete!", ephemeral=True)
 
     @discord.ui.button(label="End Game", style=discord.ButtonStyle.danger)
     async def end_game(self, interaction: discord.Interaction, button: Button):
