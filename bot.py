@@ -37,6 +37,7 @@ class GameView(View):
         self.shuffle_button = button
         await interaction.response.send_message("Shuffling the game!", ephemeral=True)
         # call shuffle method
+        # should check if their are still 8 players ifd not drag to lobby and end game
 
     @discord.ui.button(label="End Game", style=discord.ButtonStyle.danger)
     async def end_game(self, interaction: discord.Interaction, button: Button):
@@ -208,7 +209,13 @@ async def remove_role(interaction: discord.Interaction):
         f"I removed the following roles: {', '.join(removed_roles)}", ephemeral=True
     )
 
-
+@bot.tree.command(name='leave-8s')
+async def leave_8s(interaction: discord.Interaction):
+    if interaction.user in game_states[interaction.guild.id][interaction.user.id].players:
+        game_states[interaction.guild.id][interaction.user.id].players.remove(interaction.user)
+        await interaction.response.send_message(embed=discord.Embed(title='You left the game', color=discord.Color.green()), ephemeral=False)
+    else:
+        await interaction.response.send_message(embed=discord.Embed(title='You are not in a started game', color=discord.Color.red()), ephemeral=False)
 # TODO
 # Posssibly have it so when starting a game, 8 dropdowns (linked to the 8 people currently in the lobby channel) appear that will each ask for a members player role
 # Lock lobby, alpha, and bravo channels so only the players can join
@@ -269,31 +276,40 @@ async def start_8s(interaction: discord.Interaction):
         current_state.slayers = role_mapping["slayer"]
 
         # Ensure correct role distribution
-        if len(current_state.backlines) != 2 or len(current_state.supports) != 2 or len(current_state.slayers) != 4:
-            await interaction.response.send_message("Invalid role distribution. Make sure there are exactly 2 backlines, 2 supports, and 4 slayers.")
-            return
+        # if len(current_state.backlines) != 2 or len(current_state.supports) != 2 or len(current_state.slayers) != 4:
+        #     await interaction.response.send_message("Invalid role distribution. Make sure there are exactly 2 backlines, 2 supports, and 4 slayers.")
+        #     return
 
         # Shuffle and assign teams
         random.shuffle(current_state.slayers)  # Randomize slayers
 
-        team_alpha = [current_state.backlines.pop(), current_state.supports.pop(), current_state.slayers.pop(), current_state.slayers.pop()]
-        team_bravo = [current_state.backlines.pop(), current_state.supports.pop(), current_state.slayers.pop(), current_state.slayers.pop()]
+        # team_alpha = [current_state.backlines.pop(), current_state.supports.pop(), current_state.slayers.pop(), current_state.slayers.pop()]
+        # team_bravo = [current_state.backlines.pop(), current_state.supports.pop(), current_state.slayers.pop(), current_state.slayers.pop()]
+        team_alpha = ['backline', 'support', 'slayer', 'slayer']
+        team_bravo = ['backline2', 'support2', 'slayer2', 'slayer2']
         current_state.controls.alpha_team = team_alpha
         current_state.controls.bravo_team = team_bravo
         # Move players to their respective teams
-        for member in team_alpha:
-            await member.move_to(current_state.alpha_channel)
-        for member in team_bravo:
-            await member.move_to(current_state.bravo_channel)
+        # for member in team_alpha:
+        #     await member.move_to(current_state.alpha_channel)
+        # for member in team_bravo:
+        #     await member.move_to(current_state.bravo_channel)
 
         print(stored_games)
-        teamsEmbed = discord.Embed(title='Teams', color=discord.Color.black())
-        teamsEmbed.add_field(name='Alpha Backline', value=team_alpha[0].name, inline=True)
-        teamsEmbed.add_field(name='Alpha Support', value=team_alpha[1].name, inline=True)
-        teamsEmbed.add_field(name='Alpha Slayers', value=team_alpha[2].name + ' and ' + team_alpha[3].name, inline=True)
-        teamsEmbed.add_field(name='Bravo Backline', value=team_bravo[0].name, inline=True)
-        teamsEmbed.add_field(name='Bravo Support', value=team_bravo[1].name, inline=True)
-        teamsEmbed.add_field(name='Bravo Slayers', value=team_bravo[2].name + ' and ' + team_bravo[3].name, inline=True)
+        # teamsEmbed = discord.Embed(title='Teams', color=discord.Color.blurple())
+        # teamsEmbed.add_field(name='Alpha Backline', value=team_alpha[0].name, inline=True)
+        # teamsEmbed.add_field(name='Alpha Support', value=team_alpha[1].name, inline=True)
+        # teamsEmbed.add_field(name='Alpha Slayers', value=team_alpha[2].name + ' and ' + team_alpha[3].name, inline=True)
+        # teamsEmbed.add_field(name='Bravo Backline', value=team_bravo[0].name, inline=True)
+        # teamsEmbed.add_field(name='Bravo Support', value=team_bravo[1].name, inline=True)
+        # teamsEmbed.add_field(name='Bravo Slayers', value=team_bravo[2].name + ' and ' + team_bravo[3].name, inline=True)
+        teamsEmbed = discord.Embed(title='Teams', color=discord.Color.blurple())
+        teamsEmbed.add_field(name='Alpha Backline', value=team_alpha[0], inline=True)
+        teamsEmbed.add_field(name='Alpha Support', value=team_alpha[1], inline=True)
+        teamsEmbed.add_field(name='Alpha Slayers', value=team_alpha[2] + ' and ' + team_alpha[3], inline=True)
+        teamsEmbed.add_field(name='Bravo Backline', value=team_bravo[0], inline=True)
+        teamsEmbed.add_field(name='Bravo Support', value=team_bravo[1], inline=True)
+        teamsEmbed.add_field(name='Bravo Slayers', value=team_bravo[2] + ' and ' + team_bravo[3], inline=True)
         current_state.game_emebed = teamsEmbed
         await interaction.followup.send(embed=current_state.game_emebed, view=current_state.controls, ephemeral=False)
     else:
