@@ -209,6 +209,15 @@ async def remove_role(interaction: discord.Interaction):
     )
 
 
+@bot.tree.command(name='leave-8s')
+async def leave_8s(interaction: discord.Interaction):
+    if interaction.user in game_states[interaction.guild.id][interaction.user.id].players:
+        game_states[interaction.guild.id][interaction.user.id].players.remove(interaction.user)
+        await interaction.response.send_message(embed=discord.Embed(title='You left the game', color=discord.Color.green()), ephemeral=False)
+    else:
+        await interaction.response.send_message(embed=discord.Embed(title='You are not in a started game', color=discord.Color.red()), ephemeral=False)
+
+
 # TODO
 # Posssibly have it so when starting a game, 8 dropdowns (linked to the 8 people currently in the lobby channel) appear that will each ask for a members player role
 # Lock lobby, alpha, and bravo channels so only the players can join
