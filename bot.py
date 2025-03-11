@@ -34,6 +34,7 @@ class GameView(View):
 
     @discord.ui.button(label="Shuffle", style=discord.ButtonStyle.blurple)
     async def shuffle(self, interaction: discord.Interaction, button: Button):
+        # TODO CHECK IF THEIR ARE STILL 8 PLAYERS IN .players when shuffling, if not or their are not 8 players in the channels, do not shuffle
         self.shuffle_button = button
     
         # Reference the current game state
@@ -56,15 +57,20 @@ class GameView(View):
     
         # Update the embed with new team information
         new_embed = discord.Embed(title='Teams', color=discord.Color.blurple())
-        new_embed.add_field(name='Alpha Backline', value=game_state.alpha_team['backline_a'], inline=True)
-        new_embed.add_field(name='Alpha Support', value=game_state.alpha_team['support_a'], inline=True)
-        new_embed.add_field(name='Alpha Slayers', value=game_state.alpha_team['slayers_a'] + ' and ' + game_state.alpha_team['slayers_a2'], inline=True)
-        new_embed.add_field(name='Bravo Backline', value=game_state.bravo_team['backline_b'], inline=True)
-        new_embed.add_field(name='Bravo Support', value=game_state.bravo_team['support_b'], inline=True)
-        new_embed.add_field(name='Bravo Slayers', value=game_state.bravo_team['slayers_b'] + ' and ' + game_state.bravo_team['slayers_b2'], inline=True)
+        new_embed.add_field(name='Alpha Backline', value=game_state.alpha_team['backline_a'].nick, inline=True)
+        new_embed.add_field(name='Alpha Support', value=game_state.alpha_team['support_a'].nick, inline=True)
+        new_embed.add_field(name='Alpha Slayers', value=game_state.alpha_team['slayers_a'].nick + ' and ' + game_state.alpha_team['slayers_a2'].nick, inline=True)
+        new_embed.add_field(name='Bravo Backline', value=game_state.bravo_team['backline_b'].nick, inline=True)
+        new_embed.add_field(name='Bravo Support', value=game_state.bravo_team['support_b'].nick, inline=True)
+        new_embed.add_field(name='Bravo Slayers', value=game_state.bravo_team['slayers_b'].nick + ' and ' + game_state.bravo_team['slayers_b2'].nick, inline=True)
     
         # Save updated embed in game state
         game_state.game_embed = new_embed
+
+        for player in game_state.alpha_team.values():
+            await player.move_to(game_state.alpha_channel)
+        for player in game_state.bravo_team.values():
+            await player.move_to(game_state.bravo_channel)
     
         # Edit the original message instead of sending a new one
         await interaction.response.edit_message(embed=game_state.game_embed)
@@ -76,7 +82,8 @@ class GameView(View):
         self.end_button = button
         for child in self.children:
             child.disabled = True  # Disable buttons after ending the game
-        await interaction.response.edit_message(content="Game Over!", view=self)
+        game_states[interaction.guild.id][interaction.user.id].isStarted = False
+        await interaction.response.edit_message(embed=discord.Embed(title="Game has ended", color=discord.Color.red()), view=self)
 
 class GameState:
     def __init__(self, creator_id: int=None):
@@ -98,18 +105,7 @@ class GameState:
 # Each guild has its own unique id which is associated with a list of players, each guild has 1 unique game at a time
 # "data" "base"
 # instead each creators id's value being a dict, it should be an object
-stored_games: dict[int, dict[int, list[discord.Member]]] = defaultdict(
-    lambda: defaultdict(
-        lambda: {'players': [], 'split-roles': []}
-        )
-    )
 game_states = defaultdict(lambda: defaultdict(GameState))
-
-# MIGRATE TO THIS
-# games_states = {
-#     12345: {67890: object},
-#     ...
-# }
 
 @bot.event
 async def on_ready():
@@ -184,6 +180,13 @@ def get_category(interaction: discord.Interaction):
 # create a text channel called chat-8s
 @bot.tree.command(name='setup')
 async def setup_channels(interaction: discord.Interaction):
+    role_names = ('8s', 'backline', 'support', 'slayer')
+    guild_roles = [role.name for role in interaction.guild.roles]
+
+    for role_name in role_names - guild_roles:  # Only create missing roles
+        await interaction.guild.create_role(name=role_name)
+        await interaction.send(f"Role '{role_name}' has been created.")
+
     bot_category = await interaction.guild.create_category(name='Bot-8s')
     await bot_category.create_voice_channel(name='Lobby-Create', user_limit=1)
 
@@ -198,11 +201,23 @@ class Dropdown(Select):
         super().__init__(placeholder="Choose one option...", min_values=1, max_values=1, options=options)
 
     async def callback(self, interaction: discord.Interaction):
-        try:
-            await interaction.user.add_roles(discord.utils.get(interaction.guild.roles, name=self.values[0]))
-        except discord.errors.Forbidden:
-            await interaction.response.send_message(f"I do not have permission to give {interaction.user.mention} the role {self.values[0]}", ephemeral=True)
-        await interaction.response.send_message(f"You selected: {self.values[0]}", ephemeral=True)
+        guild = interaction.guild
+        user = interaction.user
+        target_roles = ("backline", "support", "slayer")
+        user_roles = [role for role in interaction.user.roles if role.name in target_roles]
+
+        if user_roles:
+            await user.remove_roles(*user_roles)
+
+        new_role = discord.utils.get(guild.roles, name=self.values[0])
+        if new_role:
+            try:
+                await user.add_roles(new_role)
+                await interaction.response.send_message(f"Your role has been updated to: {self.values[0]}", ephemeral=True)
+            except discord.errors.Forbidden:
+                await interaction.response.send_message(f"I do not have permission to assign the role {self.values[0]}", ephemeral=True)
+        else:
+            await interaction.response.send_message("The selected role does not exist.", ephemeral=True)
 
 
 class DropdownView(View):
@@ -215,36 +230,11 @@ class DropdownView(View):
 async def set_role(interaction: discord.Interaction):
     await interaction.response.send_message("Select an option:", view=DropdownView(), ephemeral=True)
 
-
-@bot.tree.command(name='remove-role')
-async def remove_role(interaction: discord.Interaction):
-    await interaction.response.defer()
-    target_roles = set("backline", "support", "slayer")
-    user_roles = [role for role in interaction.user.roles if role.name in target_roles]
-
-    if not user_roles:
-        await interaction.response.send_message("You do not have any roles to remove", ephemeral=True)
-        return
-
-    removed_roles = []
-    for role in user_roles:
-        try:
-            await interaction.user.remove_roles(role)
-            removed_roles.append(role.name)
-        except discord.Forbidden:
-            await interaction.followup.send(
-                f"I do not have permission to remove {role.name}, skipping...",
-                ephemeral=True
-            )
-
-    await interaction.response.send_message(
-        f"I removed the following roles: {', '.join(removed_roles)}", ephemeral=True
-    )
-
 @bot.tree.command(name='leave-8s')
 async def leave_8s(interaction: discord.Interaction):
     if interaction.user in game_states[interaction.guild.id][interaction.user.id].players:
         game_states[interaction.guild.id][interaction.user.id].players.remove(interaction.user)
+        game_states[interaction.guild.id][interaction.user.id].isStarted = False # no longer 8 players
         await interaction.response.send_message(embed=discord.Embed(title='You left the game', color=discord.Color.green()), ephemeral=False)
     else:
         await interaction.response.send_message(embed=discord.Embed(title='You are not in a started game', color=discord.Color.red()), ephemeral=False)
@@ -257,6 +247,10 @@ async def leave_8s(interaction: discord.Interaction):
 @bot.tree.command(name='start-8s')
 async def start_8s(interaction: discord.Interaction):
     await interaction.response.defer()
+    if game_states[interaction.guild.id][interaction.user.id].isStarted:
+        await interaction.followup.send(embed=discord.Embed(title='Game is already started', color=discord.Color.red()), ephemeral=False)
+        return
+
     find_category = get_category(interaction)
     if find_category:
         current_lobby_obj = discord.utils.get(find_category.voice_channels, name='Lobby-8s')
@@ -270,7 +264,7 @@ async def start_8s(interaction: discord.Interaction):
                 await interaction.followup.send_message(embed=discord.Embed(title='Not enough players', color=discord.Color.red()), ephemeral=False)
                 return
             elif interaction.user not in current_lobby_obj.members:
-                await interaction.followup.send_message(embed=discord.Embed(title=f'{interaction.user.mention} is in the lobby', color=discord.Color.red()), ephemeral=False)
+                await interaction.followup.send_message(embed=discord.Embed(title=f'The creator {interaction.user.mention} is not in the lobby', color=discord.Color.red()), ephemeral=False)
                 return
             if any(discord.utils.get(guild.categories, name=f'8s-{interaction.user.id}') for guild in bot.guilds):
                 await interaction.followup.send_message(
@@ -291,11 +285,16 @@ async def start_8s(interaction: discord.Interaction):
         game_states[interaction.guild.id][interaction.user.id].bravo_channel = discord.utils.get(find_category.voice_channels, name='Bravo-8s')
         game_states[interaction.guild.id][interaction.user.id].lobby_channel = discord.utils.get(find_category.voice_channels, name='Lobby-8s')
         game_states[interaction.guild.id][interaction.user.id].controls = GameView()
+        # role_mapping = {
+        #     "backline": ['backline1', 'backline2'],
+        #     "support": ['support1', 'support2'],
+        #     "slayer": ['slayer1', 'slayer2', 'slayer3', 'slayer4'],
+        # }       
         role_mapping = {
-            "backline": ['backline1', 'backline2'],
-            "support": ['support1', 'support2'],
-            "slayer": ['slayer1', 'slayer2', 'slayer3', 'slayer4'],
-        }       
+            "backline": [],
+            "support": [],
+            "slayer": [],
+        }
         for member in lobby:
             for role_name in role_mapping:
                 if any(role.name == role_name for role in member.roles):
@@ -310,44 +309,55 @@ async def start_8s(interaction: discord.Interaction):
         print(game_states[interaction.guild.id][interaction.user.id].supports)
 
         # Ensure correct role distribution
-        # if len(current_state.backlines) != 2 or len(current_state.supports) != 2 or len(current_state.slayers) != 4:
-        #     await interaction.response.send_message("Invalid role distribution. Make sure there are exactly 2 backlines, 2 supports, and 4 slayers.")
-        #     return
+        if len(current_state.backlines) != 2 or len(current_state.supports) != 2 or len(current_state.slayers) != 4:
+            await interaction.response.send_message("Invalid role distribution. Make sure there are exactly 2 backlines, 2 supports, and 4 slayers.")
+            return
 
         # Shuffle and assign teams
         random.shuffle(game_states[interaction.guild.id][interaction.user.id].slayers)  # Randomize slayers
-
-        # team_alpha = [current_state.backlines.pop(), current_state.supports.pop(), current_state.slayers.pop(), current_state.slayers.pop()]
-        # team_bravo = [current_state.backlines.pop(), current_state.supports.pop(), current_state.slayers.pop(), current_state.slayers.pop()]
-        team_alpha = {'backline_a': 'backline1', 'support_a': 'support1', 'slayer_a': 'slayer1', 'slayer_a2': 'slayer2'}
-        team_bravo = {'backline_b': 'backline2', 'support_b': 'support2', 'slayer_b': 'slayer3', 'slayer_b2': 'slayer4'}
+        current_state = game_states[interaction.guild.id][interaction.user.id]
+        team_alpha = {
+            'backline_a': current_state.backlines.pop().nick,
+            'support_a': current_state.supports.pop().nick,
+            'slayer_a': current_state.slayers.pop().nick,
+            'slayer_a2': current_state.slayers.pop().nick
+        }
+        team_bravo = {
+            'backline_b': current_state.backlines.pop().nick,
+            'support_b': current_state.supports.pop().nick,
+            'slayer_b': current_state.slayers.pop().nick,
+            'slayer_b2': current_state.slayers.pop().nick
+        }
         print(team_alpha['support_a'])
         print(team_bravo['support_b'])
         game_states[interaction.guild.id][interaction.user.id].alpha_team = team_alpha
         game_states[interaction.guild.id][interaction.user.id].bravo_team = team_bravo
-        # Move players to their respective teams
-        # for member in team_alpha:
-        #     await member.move_to(current_state.alpha_channel)
-        # for member in team_bravo:
-        #     await member.move_to(current_state.bravo_channel)
 
-        print(stored_games)
-        # teamsEmbed = discord.Embed(title='Teams', color=discord.Color.blurple())
-        # teamsEmbed.add_field(name='Alpha Backline', value=team_alpha[0].name, inline=True)
-        # teamsEmbed.add_field(name='Alpha Support', value=team_alpha[1].name, inline=True)
-        # teamsEmbed.add_field(name='Alpha Slayers', value=team_alpha[2].name + ' and ' + team_alpha[3].name, inline=True)
-        # teamsEmbed.add_field(name='Bravo Backline', value=team_bravo[0].name, inline=True)
-        # teamsEmbed.add_field(name='Bravo Support', value=team_bravo[1].name, inline=True)
-        # teamsEmbed.add_field(name='Bravo Slayers', value=team_bravo[2].name + ' and ' + team_bravo[3].name, inline=True)
+        # Move players to their respective teams
+        for member in team_alpha:
+            await member.move_to(current_state.alpha_channel)
+        for member in team_bravo:
+            await member.move_to(current_state.bravo_channel)
+
         teamsEmbed = discord.Embed(title='Teams', color=discord.Color.blurple())
-        teamsEmbed.add_field(name='Alpha Backline', value=team_alpha['backline_a'], inline=True)
-        teamsEmbed.add_field(name='Alpha Support', value=team_alpha['support_a'], inline=True)
-        teamsEmbed.add_field(name='Alpha Slayers', value=team_alpha['slayer_a'] + ' and ' + team_alpha['slayer_a2'], inline=True)
-        teamsEmbed.add_field(name='Bravo Backline', value=team_bravo['backline_b'], inline=True)
-        teamsEmbed.add_field(name='Bravo Support', value=team_bravo['support_b'], inline=True)
-        teamsEmbed.add_field(name='Bravo Slayers', value=team_bravo['slayer_b'] + ' and ' + team_bravo['slayer_b2'], inline=True)
-        game_states[interaction.guild.id][interaction.user.id].game_emebed = teamsEmbed
-        await interaction.followup.send(embed=game_states[interaction.guild.id][interaction.user.id].game_emebed, view=game_states[interaction.guild.id][interaction.user.id].controls, ephemeral=False)
+        teamsEmbed.add_field(name='Alpha Backline', value=team_alpha[0].nick, inline=True)
+        teamsEmbed.add_field(name='Alpha Support', value=team_alpha[1].nick, inline=True)
+        teamsEmbed.add_field(name='Alpha Slayers', value=team_alpha[2].nick + ' and ' + team_alpha[3].nick, inline=True)
+        teamsEmbed.add_field(name='Bravo Backline', value=team_bravo[0].nick, inline=True)
+        teamsEmbed.add_field(name='Bravo Support', value=team_bravo[1].nick, inline=True)
+        teamsEmbed.add_field(name='Bravo Slayers', value=team_bravo[2].nick + ' and ' + team_bravo[3].nick, inline=True)
+
+        teamsEmbed = discord.Embed(title='Teams', color=discord.Color.blurple())
+        teamsEmbed.add_field(name='Alpha Backline', value=team_alpha['backline_a'].nick, inline=True)
+        teamsEmbed.add_field(name='Alpha Support', value=team_alpha['support_a'].nick, inline=True)
+        teamsEmbed.add_field(name='Alpha Slayers', value=team_alpha['slayer_a'].nick + ' and ' + team_alpha['slayer_a2'].nick, inline=True)
+        teamsEmbed.add_field(name='Bravo Backline', value=team_bravo['backline_b'].nick, inline=True)
+        teamsEmbed.add_field(name='Bravo Support', value=team_bravo['support_b'].nick, inline=True)
+        teamsEmbed.add_field(name='Bravo Slayers', value=team_bravo['slayer_b'].nick + ' and ' + team_bravo['slayer_b2'].nick, inline=True)
+
+        game_states[interaction.guild.id][interaction.user.id].game_embed = teamsEmbed
+        game_states[interaction.guild.id][interaction.user.id].isStarted = True
+        await interaction.followup.send(embed=game_states[interaction.guild.id][interaction.user.id].game_embed, view=game_states[interaction.guild.id][interaction.user.id].controls, ephemeral=False)
     else:
         await interaction.followup.send(embed=discord.Embed(title='Setup category "Bot-8s" not found', color=discord.Color.red()), ephemeral=True)
 
@@ -370,10 +380,7 @@ async def drag_players(interaction: discord.Interaction):
 @bot.tree.command(name='end-8s')
 async def end_8s(interaction: discord.Interaction):
     await interaction.response.defer()
-    creator = interaction.user
-    await drag_players(interaction)
-    creator_lobby = game_states[interaction.guild.id][creator.id].lobby_channel
-    for member in creator_lobby.members:
+    for member in game_states[interaction.guild.id][interaction.user.id].players:
         await member.move_to(None)
     await interaction.followup.send(embed=discord.Embed(title='8s game ended', color=discord.Color.green()), ephemeral=False)
 
@@ -394,12 +401,6 @@ async def delete_setup(interaction: discord.Interaction):
         await interaction.response.send_message(embed=discord.Embed(title='Setup deleted', color=discord.Color.green()), ephemeral=False)
     else:
         await interaction.response.send_message(embed=discord.Embed(title='Setup category "Bot-8s" not found', color=discord.Color.red()), ephemeral=True)
-
-# take in user and then lookup the game state and shuffle the players
-async def shuffle(interaction: discord.Interaction):
-    await interaction.response.defer()
-    creator_state = game_states[interaction.guild.id][interaction.user.id]
-    await interaction.followup.send(embed=discord.Embed(title='Shuffle complete', color=discord.Color.green()), ephemeral=False)
 
 
 @bot.tree.command(name='export-members')
