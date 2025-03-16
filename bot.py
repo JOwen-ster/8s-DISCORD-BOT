@@ -34,6 +34,9 @@ class GameView(View):
 
     @discord.ui.button(label="Shuffle", style=discord.ButtonStyle.blurple)
     async def shuffle(self, interaction: discord.Interaction, button: Button):
+        if not self.isStarted:
+            await interaction.response.send_message("The game cant not be continued, most likely not enough players", ephemeral=True)
+            return
         # TODO CHECK IF THEIR ARE STILL 8 PLAYERS IN .players when shuffling, if not or their are not 8 players in the channels, do not shuffle
         self.shuffle_button = button
     
@@ -254,9 +257,8 @@ async def start_8s(interaction: discord.Interaction):
     find_category = get_category(interaction)
     if find_category:
         current_lobby_obj = discord.utils.get(find_category.voice_channels, name='Lobby-8s')
-        if current_lobby_obj and current_lobby_obj.members:
-            current_lobby_count = len(current_lobby_obj.members)
-        else:
+        current_lobby_count = 0
+        if current_lobby_obj and len(current_lobby_obj.members) != 8:
             await interaction.followup.send_message(embed=discord.Embed(title='Not enough players', color=discord.Color.red()), ephemeral=False)
             return
         if not ENV_DEBUG:
@@ -285,11 +287,7 @@ async def start_8s(interaction: discord.Interaction):
         game_states[interaction.guild.id][interaction.user.id].bravo_channel = discord.utils.get(find_category.voice_channels, name='Bravo-8s')
         game_states[interaction.guild.id][interaction.user.id].lobby_channel = discord.utils.get(find_category.voice_channels, name='Lobby-8s')
         game_states[interaction.guild.id][interaction.user.id].controls = GameView()
-        # role_mapping = {
-        #     "backline": ['backline1', 'backline2'],
-        #     "support": ['support1', 'support2'],
-        #     "slayer": ['slayer1', 'slayer2', 'slayer3', 'slayer4'],
-        # }       
+
         role_mapping = {
             "backline": [],
             "support": [],
@@ -307,10 +305,10 @@ async def start_8s(interaction: discord.Interaction):
         print(game_states[interaction.guild.id][interaction.user.id].slayers)
         print(game_states[interaction.guild.id][interaction.user.id].backlines)
         print(game_states[interaction.guild.id][interaction.user.id].supports)
-
+        current_state = game_states[interaction.guild.id][interaction.user.id]
         # Ensure correct role distribution
         if len(current_state.backlines) != 2 or len(current_state.supports) != 2 or len(current_state.slayers) != 4:
-            await interaction.response.send_message("Invalid role distribution. Make sure there are exactly 2 backlines, 2 supports, and 4 slayers.")
+            await interaction.followup.send("Invalid role distribution. Make sure there are exactly 2 backlines, 2 supports, and 4 slayers.")
             return
 
         # Shuffle and assign teams
@@ -328,8 +326,6 @@ async def start_8s(interaction: discord.Interaction):
             'slayer_b': current_state.slayers.pop().nick,
             'slayer_b2': current_state.slayers.pop().nick
         }
-        print(team_alpha['support_a'])
-        print(team_bravo['support_b'])
         game_states[interaction.guild.id][interaction.user.id].alpha_team = team_alpha
         game_states[interaction.guild.id][interaction.user.id].bravo_team = team_bravo
 
