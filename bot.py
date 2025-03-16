@@ -86,6 +86,7 @@ class GameView(View):
         for child in self.children:
             child.disabled = True  # Disable buttons after ending the game
         game_states[interaction.guild.id][interaction.user.id].isStarted = False
+        await end_8s_game(guild_obj=interaction.guild, u_id=interaction.user.id)
         await interaction.response.edit_message(embed=discord.Embed(title="Game has ended", color=discord.Color.red()), view=self)
 
 class GameState:
@@ -241,6 +242,11 @@ async def leave_8s(interaction: discord.Interaction):
         await interaction.response.send_message(embed=discord.Embed(title='You left the game', color=discord.Color.green()), ephemeral=False)
     else:
         await interaction.response.send_message(embed=discord.Embed(title='You are not in a started game', color=discord.Color.red()), ephemeral=False)
+
+
+async def end_8s_game(guild_obj: discord.Guild, u_id: int):
+    for member in game_states[guild_obj.id][u_id].players:
+        await member.move_to(None)
 # TODO
 # Posssibly have it so when starting a game, 8 dropdowns (linked to the 8 people currently in the lobby channel) appear that will each ask for a members player role
 # Lock lobby, alpha, and bravo channels so only the players can join
