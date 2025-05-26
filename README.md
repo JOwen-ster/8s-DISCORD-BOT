@@ -8,6 +8,5 @@ A Discord bot that manages Splatoon 8s.
 ## Technologies
 - Discord.py
 - Python 3.13
-- SQLite3
 - Docker
 
