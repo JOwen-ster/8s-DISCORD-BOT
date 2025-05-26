@@ -65,11 +65,7 @@ class GameState:
 # Each guild has its own unique id which is associated with a list of players, each guild has 1 unique game at a time
 # "data" "base"
 # instead each creators id's value being a dict, it should be an object
-stored_games: dict[int, dict[int, list[discord.Member]]] = defaultdict(
-    lambda: defaultdict(
-        lambda: {'players': [], 'split-roles': []}
-        )
-    )
+
 game_states = defaultdict(lambda: defaultdict(GameState))
 
 # MIGRATE TO THIS
@@ -295,7 +291,6 @@ async def start_8s(interaction: discord.Interaction):
         for member in team_bravo:
             await member.move_to(current_state.bravo_channel)
 
-        print(stored_games)
         teamsEmbed = discord.Embed(title='Teams', color=discord.Color.black())
         teamsEmbed.add_field(name='Alpha Backline', value=team_alpha[0].name, inline=True)
         teamsEmbed.add_field(name='Alpha Support', value=team_alpha[1].name, inline=True)

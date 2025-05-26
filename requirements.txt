@@ -1,0 +1,4 @@
+discord.py
+tortoise-orm
+asyncpg
+python-dotenv
