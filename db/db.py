@@ -9,4 +9,3 @@ async def init_db():
         db_url=os.getenv("DATABASE_URL"),
         modules={"models": ["models"]}
     )
-    await Tortoise.generate_schemas()
