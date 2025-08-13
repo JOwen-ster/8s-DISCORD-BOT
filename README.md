@@ -7,7 +7,7 @@ A Discord bot that manages Splatoon 8s.
 ## Features
 * Setup Command (/8s-enable)
   * Creates a category and 4 voice channels with a limit of 1 person (these are 8s-creator vc's)
-  * A new channel called 8s-game-roles is also created where a dropdown view is sent to select if you are slayer, backline, or support
+  * A new channel called 8s-game-roles is also created where a button view is sent to select if you are slayer, backline, or support
   * When someone joins this voice call it creates a new category in the Discord called 8s-Discord_user_id
   * A Lobby voice channel is created with a limit of 8 people (limit will be set to 10 once the game start to allow specs)
   * If the lobby channel becomes empty at any time that 8s session will be deleted from the server and taken out of the bots database.
