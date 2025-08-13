@@ -14,15 +14,6 @@ intents = discord.Intents.default()
 intents.members = True
 
 bot = commands.Bot(command_prefix='^', description=description, intents=intents)
-# Users are able to generate a lobby using a generator voice channel
-# Other users can fil up the lobby 
-# when the lobby has 8 people, it can then be started using /start-8s
-# If the game is started, the game can be ended using /end-8s or the button on the view
-# If a game is started, do not allow users in that started game to generate or join a new lobby/team channel
-# Add a /leave game command, this will drag everyone back to the lobby
-#set the state to not started, reset the lists, removes game roles from leaver
-#if the creator leaves, delete the game state and category
-# LOCK ALPHA AND BRAVO CHANNELS SO USERS CAN ONLY JOIN BY BEING MOVED BY THE BOT
 ENV_DEBUG = True
 
 
@@ -68,12 +59,6 @@ class GameState:
 
 game_states = defaultdict(lambda: defaultdict(GameState))
 
-# MIGRATE TO THIS
-# games_states = {
-#     12345: {67890: object},
-#     ...
-# }
-
 @bot.event
 async def on_ready():
     await bot.tree.sync()
@@ -92,7 +77,7 @@ async def on_voice_state_update(member: discord.Member, before: discord.VoiceSta
             await member.send(embed=discord.Embed(title='You currently have a lobby created, please empty it.', color=discord.Color.red()))
             await member.move_to(None)
             return
-        
+
         # Create the new category and channels
         created_category = await current_guild.create_category(name=f'8s-{member.id}')
         rules_channel = await created_category.create_text_channel(name='rules-8s')
@@ -104,6 +89,7 @@ async def on_voice_state_update(member: discord.Member, before: discord.VoiceSta
         # Create and send an embed with rules
         rules_embed = discord.Embed(
             title='Rules',
+            # make all long text in pother files and import the vars
             description='2 Teams of 4 players are created. There are 2 backlines, 2 supports, and 4 slayers. Each team will have 1 backline, 1 support, and 2 slayers. Once teams are randomly created, play a best of 3 or 5 with those teams. Once the set is over, the supports will be swapped and the slayers for each team will randomly be re-assigned.',
             color=discord.Color.red(),
             timestamp=discord.utils.utcnow(),
