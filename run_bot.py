@@ -32,6 +32,8 @@ async def main() -> None:
     else:
         # Locally Hosted Postre Server, NOT Created By Postgre Docker Image
         env_msg = 'Docker Environment Variable Not Found - Using Local Env Vars.'
+        getlog().info(env_msg)
+        print(env_msg)
         DB_USER = getenv('LOCAL_POSTGRES_USER')     # development environment variable
         DB_PASS = getenv('LOCAL_POSTGRES_PASSWORD') # development environment variable
         DB_NAME = getenv('LOCAL_POSTGRES_DB')       # development environment variable
