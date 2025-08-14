@@ -2,6 +2,7 @@ from cogs import extensions
 import asyncpg
 from discord.ext import commands
 from utils.loggingsetup import getlog
+import db.custom_query
 
 
 class Bot(commands.Bot):
@@ -21,9 +22,10 @@ class Bot(commands.Bot):
 
         async with self.db_pool.acquire() as conn:
             version = await conn.fetchval('SELECT version();')
-            version_msg = f'Connected to database on PostgreSQL Version: {version}'
-            getlog().info(version_msg)
-            print(version_msg)
+            name = await conn.fetchval('SELECT current_database();')
+            db_msg = f'Connected to {name} database on {version}'
+            getlog().info(db_msg)
+            print(db_msg)
 
         getlog().info('Ran bot setup_hook!')
 
@@ -40,27 +42,10 @@ class Bot(commands.Bot):
         print(ready_msg_tree)
         print(bot_ready_msg)
 
-    async def query(self, sql_query: str, *args, mode: str = "fetch"):
-        """
-        Run a database query.
-        
-        :param sql_query: SQL query string (can use $1, $2 placeholders for parameters)
-        :param args: Parameters for the query
-        :param mode: "fetch" (many rows), "fetchval" (single value), or "execute" (no return rows)
-        :return: Query result or None
-        """
-        if not self.db_pool:
-            raise RuntimeError("Database pool is not initialized.")
-
-        async with self.db_pool.acquire() as conn:
-            if mode == "fetch":
-                result = await conn.fetch(sql_query, *args)
-            elif mode == "fetchval":
-                result = await conn.fetchval(sql_query, *args)
-            elif mode == "execute":
-                result = await conn.execute(sql_query, *args)
-            else:
-                raise ValueError("Invalid mode. Use 'fetch', 'fetchval', or 'execute'.")
-
-            getlog().info(f"SENT_QUERY [{mode.upper()}]:\n{sql_query} | args={args}")
-            return result
+    async def query(self, sql_stmt: str, *args, mode: str = "fetch"):
+        return await db.custom_query.custom_sql_query(
+            db_pool=self.db_pool,
+            sql_query=sql_stmt,
+            *args,
+            mode=mode
+        )
