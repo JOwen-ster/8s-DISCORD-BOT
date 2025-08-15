@@ -3,7 +3,7 @@ import logging.handlers
 
 
 logger = logging.getLogger('discord')
-logger.setLevel(logging.DEBUG)
+logger.setLevel(logging.INFO)
 
 handler = logging.handlers.RotatingFileHandler(
     filename='discord_bot.log',

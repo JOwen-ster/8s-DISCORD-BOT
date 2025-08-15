@@ -1,7 +1,6 @@
 import discord
 from discord import app_commands
 from discord.ext import commands
-from cogs import extensions
 from utils.embeds import BotConfirmationEmbed
 from utils.embeds import createEmbedFields
 from utils.loggingsetup import getlog
@@ -10,11 +9,6 @@ from utils.loggingsetup import getlog
 class Test(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
-
-    @commands.Cog.listener()
-    async def on_ready(self):
-        self.bot.cog_counter += 1
-        getlog().info(F'{__name__} ready ({self.bot.cog_counter}/{len(extensions)})')
 
     @app_commands.command(name='post', description='Create a embed with your own fields')
     @app_commands.describe(title='Title',
