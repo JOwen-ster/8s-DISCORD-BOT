@@ -1,3 +1,4 @@
+# Use official Python environment image
 FROM python:3.12.6-bookworm
 
 # Set working directory

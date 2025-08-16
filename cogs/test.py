@@ -36,6 +36,5 @@ class Test(commands.Cog):
             ephemeral=True
         )
 
-# Add the cog to your discord bot.
 async def setup(bot):
     await bot.add_cog(Test(bot))

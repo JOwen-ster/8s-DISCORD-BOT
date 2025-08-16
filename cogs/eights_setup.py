@@ -23,24 +23,20 @@ class CreatorSetup(commands.Cog):
             return
 
         bot_member = interaction.guild.me
+        everyone_role = interaction.guild.default_role
         default_perms = discord.PermissionOverwrite(send_messages=False, view_channel=True)
-        bot_perms = discord.PermissionOverwrite(administrator=True)
+        bot_perms = discord.PermissionOverwrite()
+        for permission in dict(discord.Permissions().all()):
+            setattr(bot_perms, permission, True)
 
         # Create category
         bot_category = await interaction.guild.create_category(
             name='8s_Bot',
             overwrites={
-                interaction.guild.default_role: default_perms,  # No one can send messages
+                everyone_role: default_perms, # No one can send messages
                 bot_member: bot_perms # Bot has all perms
             }
         )
-
-        # Create 4 voice channels with 1-person limit
-        for i in range(1, 5):
-            await bot_category.create_voice_channel(
-                name=f'8s-Lobby-Create-{i}',
-                user_limit=1
-            )
 
         # Create rules text channel with same overwrites as category
         rules_channel = await bot_category.create_text_channel(name='8s-rules')
@@ -54,6 +50,14 @@ class CreatorSetup(commands.Cog):
             color=discord.Color.red()
         )
         await rules_channel.send(embed=rules_embed)
+
+        # Create 4 voice channels with 1-person limit
+        for i in range(1, 5):
+            await bot_category.create_voice_channel(
+                name=f'8s-Lobby-Create-{i}',
+                user_limit=1,
+                overwrites={}
+            )
 
         await interaction.followup.send(
             embed=BotConfirmationEmbed(description='Create 8s Lobby Generators!'),
@@ -105,6 +109,5 @@ class CreatorSetup(commands.Cog):
                     await channel.delete()
                 await category.delete()
 
-# Add the cog to your discord bot.
 async def setup(bot):
     await bot.add_cog(CreatorSetup(bot))
