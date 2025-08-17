@@ -2,9 +2,9 @@ import discord
 
 
 class RoleSelectView(discord.ui.View):
-    def __init__(self, data: str):
+    def __init__(self, guild_id: str):
         super().__init__(timeout=None)
-        self.data = data # guild id since each guild cani only have 1 persistent view.
+        self.guild_id = guild_id # guild id since each guild cani only have 1 persistent view.
         self.ROLE_MAP = {
             "Backline": "8s-backline",
             "Support": "8s-support",
@@ -16,7 +16,7 @@ class RoleSelectView(discord.ui.View):
             button = discord.ui.Button(
                 label=key,
                 style=discord.ButtonStyle.primary,
-                custom_id=f"persistent_view:{key}:{data}"
+                custom_id=f"persistent_view:{key}:{guild_id}"
             )
             button.callback = self.make_callback(role_name)
             self.add_item(button)
