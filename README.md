@@ -5,7 +5,7 @@ A [Discord](https://discord.com/) bot that AUTOMATICALLY manages the community m
 [TODO](TODO.md)
 
 ## Features
-* Setup Command (/8s-enable)
+* Setup Command (/8s-setup)
   * Creates a Rules channel telling users how 8s is played and how to use the bot
   * Creates a category and 4 voice channels with a limit of 1 person (these are 8s-creator vc's)
   * A command to give you the role of either slayer, backline, or support is able to then be used
@@ -13,8 +13,8 @@ A [Discord](https://discord.com/) bot that AUTOMATICALLY manages the community m
   * A Lobby voice channel is created with a limit of 8 people (limit will be set to 10 once the game start to allow specs)
   * If the lobby channel becomes empty at any time that 8s session will be deleted from the server
   * The user is dragged from the creator voice channel into the lobby and Alpha (limit 5), Bravo (limit 5), and a 8s-chat is created (bot commands will only work here except the /setup command and moderation) are created
-  * Trying to re run the /8s-enable command will not work unless you do /8s-deactivate which deletes your 8s generator setup for the server the command was used in
-  * If one of the channels or the category is missing or the roles-embed is not found and you re do /setup the bot will auto disable since your current setup isnt valid and prompt you to run /enable again 
+  * Trying to re run the /8s-setup command will not work unless you do /8s-deactivate which deletes your 8s generator setup for the server the command was used in along with the roles created for 8s
+  * If one of the channels or the category is missing or the roles-embed is not found and you re do /clean-setup and the bot will auto delete everything it made and then re make it.
   * DO NOT MANUALLY CREATE OR RENAME CHANNELS UNDER ANY 8s CATEGORIES (SETUP AND CURRENT SESSIONS) THIS CAN BREAK YOUR SETUP (use discord channel, category and guild ids to fix this and store them in the db.)
 * Game Command
   * People then use /8s-start and it will check if the lobby is full and if 2 players have the backline role, 2 players have support, and 4 have slayer in that lobby before finally starting
@@ -30,11 +30,13 @@ A [Discord](https://discord.com/) bot that AUTOMATICALLY manages the community m
 ## Technologies
 
 ### Language
-- [Python 3.12](https://github.com/python/cpython)
+- [Python](https://github.com/python/cpython)
 - [Discord.py (Python Discord API Wrapper)](https://github.com/Rapptz/discord.py)
 
 ### Database
 - [PostgreSQL](https://github.com/postgres/postgres)
+- [Async Client Library](https://github.com/MagicStack/asyncpg)
+
 
 ### DevOps / Deployment
 - [Docker Compose](https://github.com/docker/compose)

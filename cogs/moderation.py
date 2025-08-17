@@ -6,6 +6,8 @@ from utils.loggingsetup import getlog
 class Moderation(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
+    
+    # End game command using the current hosts id or by passing in the guild id and category id
 
     # Repeating background task using the asyncio discord.ext tasks decorator
     @tasks.loop(minutes=5.0)

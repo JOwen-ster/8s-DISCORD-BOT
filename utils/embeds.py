@@ -15,6 +15,49 @@ class BotErrorEmbed(Embed):
     def __init__(self, *args, **kwargs):
         super().__init__(color=Color.red(), *args, **kwargs)
 
+class FullTeamsEmbed(Embed):
+    def __init__(self, alpha_team=None, bravo_team=None, *args, **kwargs):
+        super().__init__(color=Color.random(), title="Teams", *args, **kwargs)
+
+        # Re-set default value if not specified
+        if alpha_team is None:
+            alpha_team = {"backline": "-", "support": "-", "slayers": ["-", "-"]}
+        if bravo_team is None:
+            bravo_team = {"backline": "-", "support": "-", "slayers": ["-", "-"]}
+
+        self.alpha_text = (
+            f"Backline: {alpha_team['backline']}\n"
+            f"Support: {alpha_team['support']}\n"
+            f"Slayers: {', '.join(alpha_team['slayers'])}"
+        )
+        self.bravo_text = (
+            f"Backline: {bravo_team['backline']}\n"
+            f"Support: {bravo_team['support']}\n"
+            f"Slayers: {', '.join(bravo_team['slayers'])}"
+        )
+
+        # Add fields to embed
+        self.add_field(name="Alpha Team", value=self.alpha_text, inline=False)
+        self.add_field(name="Bravo Team", value=self.bravo_text, inline=False)
+
+    def update_team(self, alpha_team=None, bravo_team=None):
+        """Edit team members dynamically"""
+        if alpha_team:
+            self.alpha_text = (
+                f"Backline: {alpha_team['backline']}\n"
+                f"Support: {alpha_team['support']}\n"
+                f"Slayers: {', '.join(alpha_team['slayers'])}"
+            )
+            self.set_field_at(0, name="Alpha Team", value=self.alpha_text, inline=False)
+
+        if bravo_team:
+            self.bravo_text = (
+                f"Backline: {bravo_team['backline']}\n"
+                f"Support: {bravo_team['support']}\n"
+                f"Slayers: {', '.join(bravo_team['slayers'])}"
+            )
+            self.set_field_at(1, name="Bravo Team", value=self.bravo_text, inline=False)
+
 
 def createEmbedFields(embed_title: str, **fields):
     embed = Embed(

@@ -69,7 +69,7 @@ class CreatorSetup(commands.Cog):
             )
 
         await interaction.followup.send(
-            embed=BotConfirmationEmbed(description='Created 8s Lobby Generators!. Setup Complete✅'),
+            embed=BotConfirmationEmbed(description='✅Created 8s Lobby Generators! Setup Complete!'),
             ephemeral=True
         )
 
@@ -96,8 +96,8 @@ class CreatorSetup(commands.Cog):
             await channel.delete()
         await category.delete()
 
-    @commands.Cog.listener()
-    async def on_voice_state_update(self, member: discord.Member, before: discord.VoiceState, after: discord.VoiceState):
+    @commands.Cog.listener(name='on_voice_state_update')
+    async def creator_manager(self, member: discord.Member, before: discord.VoiceState, after: discord.VoiceState):
         # --- JOIN / MOVE INTO GENERATOR CHANNEL ---
         if after.channel and '8s-Lobby-Create-' in after.channel.name:
             guild = after.channel.guild

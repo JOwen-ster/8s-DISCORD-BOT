@@ -42,10 +42,10 @@ class Bot(commands.Bot):
         print(ready_msg_tree)
         print(bot_ready_msg)
 
-    async def query(self, sql_stmt: str, *args, mode: str = "fetch"):
+    async def query(self, sql_stmt: str, *values, mode: str = "fetch"):
         return await db.custom_query.custom_sql_query(
             db_pool=self.db_pool,
             sql_query=sql_stmt,
-            *args,
+            *values,
             mode=mode
         )
