@@ -69,7 +69,7 @@ class CreatorSetup(commands.Cog):
             )
 
         await interaction.followup.send(
-            embed=BotConfirmationEmbed(description='Create 8s Lobby Generators!'),
+            embed=BotConfirmationEmbed(description='Created 8s Lobby Generators!. Setup Complete✅'),
             ephemeral=True
         )
 
