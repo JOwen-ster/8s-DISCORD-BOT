@@ -75,6 +75,13 @@ class CreatorSetup(commands.Cog):
 
     @app_commands.command(name='8s-deactivate', description='Remove 8s Lobby Creator Category')
     async def delete_eights_setup(self, interaction: discord.Interaction):
+        if not interaction.user.guild_permissions.administrator:
+            await interaction.response.send_message(
+                "You must be an **Administrator** to use this command.", 
+                ephemeral=True
+            )
+            return
+
         await interaction.response.send_message(embed=BotConfirmationEmbed(description='Deactivating 8s.. Finished once the 8s_Bot Category is deleted.'), ephemeral=True)
         category = discord.utils.get(interaction.guild.categories, name='8s_Bot')
         if not category:
