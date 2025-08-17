@@ -24,6 +24,8 @@ class Test(commands.Cog):
                         details: str,
                         location: str = "N/A"
     ):
+        if interaction.user.id != interaction.guild.owner_id:
+            return
         embed = createEmbedFields(embed_title=title,
                             date=date,
                             time=time,
