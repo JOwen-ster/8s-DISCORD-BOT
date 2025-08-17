@@ -99,43 +99,54 @@ class CreatorSetup(commands.Cog):
     @commands.Cog.listener()
     async def on_voice_state_update(self, member: discord.Member, before: discord.VoiceState, after: discord.VoiceState):
         # --- JOIN / MOVE INTO GENERATOR CHANNEL ---
-        if after.channel:
-            if '8s-Lobby-Create-' in after.channel.name and after.channel.category and after.channel.category.name == '8s_Bot':
-                bot_perms = discord.PermissionOverwrite()
-                for permission in dict(discord.Permissions().all()):
-                    setattr(bot_perms, permission, True)
-                current_guild = after.channel.guild
+        if after.channel and '8s-Lobby-Create-' in after.channel.name:
+            guild = after.channel.guild
 
-                # Create a new category for this game
-                created_category = await current_guild.create_category(
-                    name=f'8s_Game_{member.display_name}',
-                    overwrites={
-                        current_guild.me: bot_perms # Bot has all perms
-                    }
-                )
+            # Double-check member is in channel
+            if not member.voice or member.voice.channel != after.channel:
+                return  
 
-                # Create a text channel
-                lobby_chat = await created_category.create_text_channel(name=f'8s-chat')
+            # Validate category
+            if not after.channel.category or after.channel.category.name != '8s_Bot':
+                return
 
-                # Create voice channels
-                # Limits will be increased to 10, 6, 6 after /8s-start is ran 
-                lobby = await created_category.create_voice_channel(name='8s-Lobby', user_limit=8)
-                await created_category.create_voice_channel(name='8s-Alpha', user_limit=4)
-                await created_category.create_voice_channel(name='8s-Bravo', user_limit=4)
+            # Create game category + channels
+            bot_perms = discord.PermissionOverwrite()
+            for perm in dict(discord.Permissions().all()):
+                setattr(bot_perms, perm, True)
 
-                # Move the member to the lobby
-                if lobby:
+            created_category = await guild.create_category(
+                name=f'8s_Game_{member.display_name}',
+                overwrites={guild.me: bot_perms}
+            )
+
+            await created_category.create_text_channel(name='8s-chat')
+            lobby = await created_category.create_voice_channel(name='8s-Lobby', user_limit=8)
+            await created_category.create_voice_channel(name='8s-Alpha', user_limit=4)
+            await created_category.create_voice_channel(name='8s-Bravo', user_limit=4)
+
+            if not member.voice or member.voice.channel != after.channel:
+                for ch in created_category.channels:
+                    await ch.delete()
+                await created_category.delete()
+                return
+
+            try:
+                if member.voice and member.voice.channel == after.channel:
                     await member.move_to(lobby)
+            except Exception as e:
+                getlog().info(e)
+                for ch in created_category.channels:
+                    await ch.delete()
+                await created_category.delete()
+                return
 
         # --- LEAVE / MOVE OUT OF GAME CHANNEL ---
         if before.channel and before.channel.category and before.channel.category.name.startswith('8s_Game_'):
             category = before.channel.category
-            voice_channels = category.voice_channels
-
-            # Check if all voice channels in the category are empty
-            if all(len(vc.members) == 0 for vc in voice_channels):
-                for channel in category.channels:
-                    await channel.delete()
+            if all(len(vc.members) == 0 for vc in category.voice_channels):
+                for ch in category.channels:
+                    await ch.delete()
                 await category.delete()
 
 async def setup(bot):
