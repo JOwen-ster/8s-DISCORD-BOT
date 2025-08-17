@@ -1,8 +1,10 @@
 import discord
 from discord import app_commands
 from discord.ext import commands
+from utils.role_select_view import RoleSelectView
 from utils.embeds import BotConfirmationEmbed, BotErrorEmbed
 from utils.loggingsetup import getlog
+
 
 class CreatorSetup(commands.Cog):
     def __init__(self, bot):
@@ -11,7 +13,7 @@ class CreatorSetup(commands.Cog):
     @app_commands.command(name='8s-setup', description='Add 8s Lobby Creator Category')
     async def setup_eights_creator(self, interaction: discord.Interaction):
         await interaction.response.send_message(
-            embed=BotConfirmationEmbed(description='Thinking...'),
+            embed=BotConfirmationEmbed(description='Setting up...'),
             ephemeral=True
         )
         category = discord.utils.get(interaction.guild.categories, name='8s_Bot')
@@ -40,7 +42,9 @@ class CreatorSetup(commands.Cog):
 
         # Create rules text channel with same overwrites as category
         rules_channel = await bot_category.create_text_channel(name='8s-rules')
-        await rules_channel.edit(sync_permissions=True)
+        for name in ['backline', 'support', 'slayer']:
+            await interaction.guild.create_role(name=f'8s-{name}')
+        roles_channel = await bot_category.create_text_channel(name='8s-roles')
 
         # Create and send an embed with rules
         rules_embed = discord.Embed(
@@ -50,6 +54,11 @@ class CreatorSetup(commands.Cog):
             color=discord.Color.red()
         )
         await rules_channel.send(embed=rules_embed)
+
+        roles_embed = BotConfirmationEmbed(description='Select the role you will use for eights today!')
+        roles_view = RoleSelectView(interaction.guild.id)
+        await roles_channel.send(embed=roles_embed, view=roles_view)
+        self.bot.add_view(roles_view)
 
         # Create 4 voice channels with 1-person limit
         for i in range(1, 5):
@@ -66,11 +75,15 @@ class CreatorSetup(commands.Cog):
 
     @app_commands.command(name='8s-deactivate', description='Remove 8s Lobby Creator Category')
     async def delete_eights_setup(self, interaction: discord.Interaction):
-        await interaction.response.send_message(embed=BotConfirmationEmbed(description='Deactivating 8s'), ephemeral=True)
+        await interaction.response.send_message(embed=BotConfirmationEmbed(description='Deactivating 8s.. Finished once the 8s_Bot Category is deleted.'), ephemeral=True)
         category = discord.utils.get(interaction.guild.categories, name='8s_Bot')
         if not category:
             await interaction.followup.send("No '8s_Bot' category found.", ephemeral=True)
             return
+
+        for role in interaction.guild.roles:
+            if role.name in {"8s-backline", "8s-support", "8s-slayer"}:
+                await role.delete()
 
         for channel in category.channels:
             await channel.delete()
@@ -81,18 +94,27 @@ class CreatorSetup(commands.Cog):
         # --- JOIN / MOVE INTO GENERATOR CHANNEL ---
         if after.channel:
             if '8s-Lobby-Create-' in after.channel.name and after.channel.category and after.channel.category.name == '8s_Bot':
+                bot_perms = discord.PermissionOverwrite()
+                for permission in dict(discord.Permissions().all()):
+                    setattr(bot_perms, permission, True)
                 current_guild = after.channel.guild
 
                 # Create a new category for this game
-                created_category = await current_guild.create_category(name=f'8s_Game_{member.display_name}')
-
-                # Create voice channels
-                lobby = await created_category.create_voice_channel(name='8s-Lobby', user_limit=8)
-                alpha = await created_category.create_voice_channel(name='8s-Alpha', user_limit=4)
-                bravo = await created_category.create_voice_channel(name='8s-Bravo', user_limit=4)
+                created_category = await current_guild.create_category(
+                    name=f'8s_Game_{member.display_name}',
+                    overwrites={
+                        current_guild.me: bot_perms # Bot has all perms
+                    }
+                )
 
                 # Create a text channel
-                await created_category.create_text_channel(name=f'Chat-8s')
+                lobby_chat = await created_category.create_text_channel(name=f'8s-chat')
+
+                # Create voice channels
+                # Limits will be increased to 10, 6, 6 after /8s-start is ran 
+                lobby = await created_category.create_voice_channel(name='8s-Lobby', user_limit=8)
+                await created_category.create_voice_channel(name='8s-Alpha', user_limit=4)
+                await created_category.create_voice_channel(name='8s-Bravo', user_limit=4)
 
                 # Move the member to the lobby
                 if lobby:
