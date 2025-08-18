@@ -41,3 +41,11 @@ A [Discord](https://discord.com/) bot that AUTOMATICALLY manages the community m
 ### DevOps / Deployment
 - [Docker Compose](https://github.com/docker/compose)
 
+Multi-Server Support
+  * You can have multiple 8s sessions happening all at once in a single server!
+  * In addition, you can have multiple servers using the bot all at once!
+Async Database Writing for Scalability
+Containerized via Docker Compose for Deployability
+Fully Automatic Setup Command
+Fully Automatic Team Generation
+  * All players in a 8s game will be dragged to the correct team voice call automatically by the bot! No more switching voice calls and mixing up teams in Discord!
