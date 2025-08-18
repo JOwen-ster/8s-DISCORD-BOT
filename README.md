@@ -1,8 +1,8 @@
 # 8s-DISCORD-BOT
-
 A [Discord](https://discord.com/) bot that AUTOMATICALLY manages the community made [Splatoon](https://splatoon.nintendo.com/) gamemode, **8s.**
 
 [TODO](TODO.md)
+
 
 ## Features
 * Setup Command (/8s-setup)
@@ -37,10 +37,10 @@ A [Discord](https://discord.com/) bot that AUTOMATICALLY manages the community m
 - [PostgreSQL](https://github.com/postgres/postgres)
 - [Async Client Library](https://github.com/MagicStack/asyncpg)
 
-
 ### DevOps / Deployment
 - [Docker Compose](https://github.com/docker/compose)
 
+## Info
 Multi-Server Support
   * You can have multiple 8s sessions happening all at once in a single server!
   * In addition, you can have multiple servers using the bot all at once!
@@ -49,3 +49,38 @@ Containerized via Docker Compose for Deployability
 Fully Automatic Setup Command
 Fully Automatic Team Generation
   * All players in a 8s game will be dragged to the correct team voice call automatically by the bot! No more manually switching voice calls and mixing up teams in Discord!
+
+
+## Running Using Docker
+* Have the Docker Engine running (open Docker Desktop)
+* Create a `.env` file in the root of this directory and fill it out
+
+### Build + Run
+```
+docker compose up --build
+```
+
+### Run
+```
+docker compose up
+```
+
+### Terminate
+```
+docker compose down
+```
+
+### Terminate + Delete Volumes
+* Delete the `postgres_data` directory created in the `/db` directory
+
+```
+docker compose down -v
+```
+
+
+## Running Locally Using Python
+* Make sure you have a Postgre server running locally and know its login information along with the database name and port
+* Create a `.env` file in the root of this directory and fill it out
+```
+python run_bot.py
+```
