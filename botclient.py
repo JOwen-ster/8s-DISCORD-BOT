@@ -3,6 +3,7 @@ import asyncpg
 from discord.ext import commands
 from utils.loggingsetup import getlog
 import db.custom_query
+import db.setup_db
 
 
 class Bot(commands.Bot):
@@ -20,12 +21,14 @@ class Bot(commands.Bot):
             except Exception as e:
                 getlog().error(f'Could not load {cog} cog ({i}/{len(extensions)}): {e}')
 
-        async with self.db_pool.acquire() as conn:
-            version = await conn.fetchval('SELECT version();')
-            name = await conn.fetchval('SELECT current_database();')
-            db_msg = f'Connected to {name} database on {version}'
-            getlog().info(db_msg)
-            print(db_msg)
+        await db.setup_db.verify_database_connection(
+            connection_pool=self.db_pool
+        )
+
+        await db.setup_db.execute_schema_files(
+            connection_pool=self.db_pool,
+            schemas_path='./db'
+        )
 
         getlog().info('Ran bot setup_hook!')
 

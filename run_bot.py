@@ -19,7 +19,7 @@ async def main() -> None:
     load_dotenv()
     TOKEN = getenv("DISCORD_BOT_TOKEN")
     env_msg = None
-    if is_containerized:
+    if is_containerized == 'True':
         # Postgre Server Created By Postgre Docker Image
         env_msg = 'Docker Environment Variable Set - Using Container Env Vars.'
         getlog().info(env_msg)
@@ -28,7 +28,10 @@ async def main() -> None:
         DB_PASS = getenv('POSTGRES_PASSWORD')
         DB_NAME = getenv('POSTGRES_DB')   
         DB_HOST = getenv('POSTGRES_HOST')    
-        DB_PORT = getenv('POSTGRES_PORT')    
+        DB_PORT = getenv('POSTGRES_PORT')
+        loaded_env_msg = 'Loaded Container Environment Variables.'
+        getlog().info(loaded_env_msg)
+        print(loaded_env_msg)
     else:
         # Locally Hosted Postre Server, NOT Created By Postgre Docker Image
         env_msg = 'Docker Environment Variable Not Found - Using Local Env Vars.'
@@ -39,6 +42,9 @@ async def main() -> None:
         DB_NAME = getenv('LOCAL_POSTGRES_DB')       # development environment variable
         DB_HOST = getenv('LOCAL_POSTGRES_HOST')     # development environment variable
         DB_PORT = getenv('LOCAL_POSTGRES_PORT')     # development environment variable
+        loaded_env_msg = 'Loaded Local Environment Variables.'
+        getlog().info(loaded_env_msg)
+        print(loaded_env_msg)
 
     assert TOKEN is not None, 'Missing Discord Bot Token'
     assert all([DB_USER, DB_PASS, DB_NAME, DB_HOST, DB_PORT]), 'Missing Database Environment Variables'
