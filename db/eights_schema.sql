@@ -1,4 +1,4 @@
-CREATE TABLE IF NOT EXISTS GameSessions (
+CREATE TABLE IF NOT EXISTS game_sessions (
     game_id BIGINT PRIMARY KEY,
     guild_id BIGINT NOT NULL,
     category_id BIGINT NOT NULL,
@@ -11,12 +11,12 @@ CREATE TABLE IF NOT EXISTS GameSessions (
     team_message_id BIGINT
 );
 
-CREATE TABLE IF NOT EXISTS Players (
+CREATE TABLE IF NOT EXISTS players (
     game_ref BIGINT NOT NULL,
     user_id BIGINT NOT NULL UNIQUE,
     isHost BOOLEAN DEFAULT FALSE,
     PRIMARY KEY (game_ref, user_id),
-    FOREIGN KEY (game_ref) REFERENCES GameSessions(game_id) ON DELETE CASCADE
+    FOREIGN KEY (game_ref) REFERENCES game_sessions(game_id) ON DELETE CASCADE
 );
 
 CREATE TABLE IF NOT EXISTS role_views (
@@ -26,4 +26,3 @@ CREATE TABLE IF NOT EXISTS role_views (
     message_id BIGINT NOT NULL,
     custom_button_id VARCHAR
 );
-
