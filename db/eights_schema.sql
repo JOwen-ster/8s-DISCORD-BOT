@@ -15,7 +15,6 @@ CREATE TABLE IF NOT EXISTS Players (
     game_ref BIGINT NOT NULL,
     user_id BIGINT NOT NULL UNIQUE,
     isHost BOOLEAN DEFAULT FALSE,
-    isPlaying BOOLEAN DEFAULT FALSE,
     PRIMARY KEY (game_ref, user_id),
     FOREIGN KEY (game_ref) REFERENCES GameSessions(game_id) ON DELETE CASCADE
 );
