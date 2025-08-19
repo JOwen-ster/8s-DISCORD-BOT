@@ -116,14 +116,14 @@ class CreatorSetup(commands.Cog):
                 setattr(bot_perms, perm, True)
 
             created_category = await guild.create_category(
-                name=f'8s_Game_{member.display_name}',
+                name=f'8s_Game_{member.id}',
                 overwrites={guild.me: bot_perms}
             )
 
             await created_category.create_text_channel(name='8s-chat')
-            lobby = await created_category.create_voice_channel(name='8s-Lobby', user_limit=8)
-            await created_category.create_voice_channel(name='8s-Alpha', user_limit=4)
-            await created_category.create_voice_channel(name='8s-Bravo', user_limit=4)
+            lobby = await created_category.create_voice_channel(name='8s-Lobby', user_limit=10)
+            await created_category.create_voice_channel(name='8s-Alpha', user_limit=6)
+            await created_category.create_voice_channel(name='8s-Bravo', user_limit=6)
 
             if not member.voice or member.voice.channel != after.channel:
                 for ch in created_category.channels:
