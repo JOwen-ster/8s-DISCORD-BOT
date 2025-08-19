@@ -21,7 +21,7 @@ class EightsGame(commands.Cog):
         # check if user id in players (account for categoeies being named the same name
         # like I make a lobby then have a friend join and I leave to use the generator again
         # but the first one to start will be added to players)
-        if '8s-chat' not in interaction.channel.name:
+        if '8s-chat' != interaction.channel.name:
             return await interaction.followup.send(embed=BotErrorEmbed(
                 description='Please run this command in a `8s-chat` text channel'),
                 ephemeral=True
@@ -61,17 +61,45 @@ class EightsGame(commands.Cog):
         if interaction.user not in lobby_channel.members:
             return await interaction.followup.send(
                 embed=BotErrorEmbed(
-                    description="You must be inside your own 8s-Lobby voice channel to start the game."
-                ),
+                    description="You must be inside your own 8s-Lobby voice channel to start the game."),
                 ephemeral=True
             )
 
+        required_roles = {
+            "8s-backline": 2,
+            "8s-support": 2,
+            "8s-slayer": 4,
+        }
+
+        role_count = {
+            "8s-backline": 0,
+            "8s-support": 0,
+            "8s-slayer": 0,
+        }
         current_lobby = []
         lobby_host = None
+
         for member in lobby_channel.members:
+            for role in member.roles:
+                if role.name in role_count:
+                    role_count[role.name] += 1
+
+                    if role_count[role.name] > required_roles[role.name]:
+                        return await interaction.followup.send(
+                            embed=BotErrorEmbed(
+                                description=f"Too many members with {role.name} role in the lobby."),
+                            ephemeral=True
+                        )
+
             if member.id == interaction.user.id:
                 lobby_host = member
             current_lobby.append(member)
+
+        if required_roles == role_count:
+            print("Lobby is valid")
+        else:
+            print("Lobby is not valid")
+            print("Current counts:", role_count)
 
         await interaction.channel.send(embed=BotConfirmationEmbed(description=f'{[member.name for member in current_lobby]}'))
         
