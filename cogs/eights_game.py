@@ -2,6 +2,7 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 from db.custom_query import custom_sql_query
+import db.checks
 from utils.embeds import BotConfirmationEmbed, BotErrorEmbed,FullTeamsEmbed
 from utils.loggingsetup import getlog
 
@@ -27,8 +28,7 @@ class EightsGame(commands.Cog):
             )
 
         user_id = interaction.user.id
-        sql = 'SELECT 1 FROM players WHERE user_id = $1 LIMIT 1;'
-        response = await custom_sql_query(self.bot.db_pool, sql, user_id, mode='fetch')
+        response = db.checks.is_playing(self.bot.db_pool, user_id)
         if response:
             return await interaction.followup.send(embed=BotErrorEmbed(
                 description='You must not be in a started game, please leave or end it.'),
