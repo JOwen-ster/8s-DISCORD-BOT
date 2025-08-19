@@ -1,7 +1,7 @@
 import discord
 from discord import app_commands
 from discord.ext import commands
-from db.custom_query import custom_sql_query
+import db.operations
 import db.checks
 from utils.embeds import BotConfirmationEmbed, BotErrorEmbed,FullTeamsEmbed
 from utils.loggingsetup import getlog
@@ -45,16 +45,21 @@ class EightsGame(commands.Cog):
                 ephemeral=True
             )
 
+        chat_channel= discord.utils.get(category.text_channels, name="8s-chat")
         lobby_channel = discord.utils.get(category.voice_channels, name="8s-Lobby")
-        if not lobby_channel:
+        alpha_channel = discord.utils.get(category.voice_channels, name="8s-Alpha")
+        bravo_channel = discord.utils.get(category.voice_channels, name="8s-Bravo")
+        chat_channel= discord.utils.get(category.text_channels, name="8s-chat")
+
+        if not chat_channel:
             return await interaction.followup.send(
-                embed=BotErrorEmbed(description="8s-Lobby not found."),
+                embed=BotErrorEmbed(description="Your 8s-chat was not found."),
                 ephemeral=True
             )
 
-        if len(lobby_channel.members) != 8:
+        if not lobby_channel:
             return await interaction.followup.send(
-                embed=BotErrorEmbed(description="The lobby must have exactly 8 players."),
+                embed=BotErrorEmbed(description="Your 8s-Lobby call was not found."),
                 ephemeral=True
             )
 
@@ -62,6 +67,24 @@ class EightsGame(commands.Cog):
             return await interaction.followup.send(
                 embed=BotErrorEmbed(
                     description="You must be inside your own 8s-Lobby voice channel to start the game."),
+                ephemeral=True
+            )
+
+        if not alpha_channel:
+            return await interaction.followup.send(
+                embed=BotErrorEmbed(description="Your 8s-Alpha call was not found."),
+                ephemeral=True
+            )
+
+        if not bravo_channel:
+            return await interaction.followup.send(
+                embed=BotErrorEmbed(description="Your 8s-Bravo call was not found."),
+                ephemeral=True
+            )
+
+        if len(lobby_channel.members) != 8:
+            return await interaction.followup.send(
+                embed=BotErrorEmbed(description="The lobby must have exactly 8 players."),
                 ephemeral=True
             )
 
@@ -91,15 +114,34 @@ class EightsGame(commands.Cog):
                             ephemeral=True
                         )
 
-            if member.id == interaction.user.id:
+            if member.id == user_id:
                 lobby_host = member
             current_lobby.append(member)
 
         if required_roles == role_count:
             print("Lobby is valid")
+            await db.operations.insert_full_game_session(
+                self.bot.db_pool,
+                game_id=lobby_host.id, # might use auto incrememnt since this column is duplicated... change forgein key for players as well
+                guild_id=guild.id,
+                category_id=category.id,
+                chat_id=chat_channel.id,
+                lobby_id=lobby_channel.id,
+                alpha_id=alpha_channel.id,
+                bravo_id=bravo_channel.id,
+                host_id=lobby_host.id,
+                lobby_members=current_lobby,
+                isStarted=True
+            )
+            await db.operations.print_tables(self.bot.db_pool)
         else:
             print("Lobby is not valid")
             print("Current counts:", role_count)
+            return await interaction.followup.send(
+                embed=BotErrorEmbed(
+                    description='The lobby does not have the correct amount of roles.'),
+                ephemeral=True
+            )
 
         await interaction.channel.send(embed=BotConfirmationEmbed(description=f'{[member.name for member in current_lobby]}'))
         
