@@ -16,7 +16,7 @@ class BotErrorEmbed(Embed):
         super().__init__(color=Color.red(), *args, **kwargs)
 
 class FullTeamsEmbed(Embed):
-    def __init__(self, alpha_team=None, bravo_team=None, *args, **kwargs):
+    def __init__(self, alpha_team: dict[str, str] = None, bravo_team: dict[str, str] = None, *args, **kwargs):
         super().__init__(color=Color.random(), title="Teams", *args, **kwargs)
 
         # Re-set default value if not specified
