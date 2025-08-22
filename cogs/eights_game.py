@@ -3,6 +3,8 @@ from discord import app_commands
 from discord.ext import commands
 import db.operations
 import db.checks
+import utils.discord_checks
+from utils.discord_checks import REQUIRED_ROLES 
 from utils.embeds import BotConfirmationEmbed, BotErrorEmbed,FullTeamsEmbed
 from utils.loggingsetup import getlog
 
@@ -49,7 +51,6 @@ class EightsGame(commands.Cog):
         lobby_channel = discord.utils.get(category.voice_channels, name="8s-Lobby")
         alpha_channel = discord.utils.get(category.voice_channels, name="8s-Alpha")
         bravo_channel = discord.utils.get(category.voice_channels, name="8s-Bravo")
-        chat_channel= discord.utils.get(category.text_channels, name="8s-chat")
 
         if not chat_channel:
             return await interaction.followup.send(
@@ -87,63 +88,45 @@ class EightsGame(commands.Cog):
                 embed=BotErrorEmbed(description="The lobby must have exactly 8 players."),
                 ephemeral=True
             )
+        lobby_member_ids = (member.id for member in lobby_channel.members)
 
-        required_roles = {
-            "8s-backline": 2,
-            "8s-support": 2,
-            "8s-slayer": 4,
-        }
+        valid_role_structure, role_count, current_lobby, role_map = await utils.discord_checks.check_role_structure(
+            self.bot,
+            guild.id,
+            *lobby_member_ids
+        )
 
-        role_count = {
-            "8s-backline": 0,
-            "8s-support": 0,
-            "8s-slayer": 0,
-        }
-        current_lobby = []
-        lobby_host = None
-
-        for member in lobby_channel.members:
-            for role in member.roles:
-                if role.name in role_count:
-                    role_count[role.name] += 1
-
-                    if role_count[role.name] > required_roles[role.name]:
-                        return await interaction.followup.send(
-                            embed=BotErrorEmbed(
-                                description=f"Too many members with {role.name} role in the lobby."),
-                            ephemeral=True
-                        )
-
-            if member.id == user_id:
-                lobby_host = member
-            current_lobby.append(member)
-
-        if required_roles == role_count:
+        if valid_role_structure and len(current_lobby) == 8:
             print("Lobby is valid")
             await db.operations.insert_full_game_session(
                 self.bot.db_pool,
-                game_id=lobby_host.id, # might use auto incrememnt since this column is duplicated... change forgein key for players as well
+                # game_id uses auto incrememnt
                 guild_id=guild.id,
                 category_id=category.id,
                 chat_id=chat_channel.id,
                 lobby_id=lobby_channel.id,
                 alpha_id=alpha_channel.id,
                 bravo_id=bravo_channel.id,
-                host_id=lobby_host.id, # delete this and use game id (linked to user ids)
+                host_id=user_id,
                 lobby_members=current_lobby,
+                isAlpha=None,
                 isStarted=True
             )
             await db.operations.print_tables(self.bot.db_pool)
+            # TODO: SEND EMBED THAT YOU MAY NOW LEAVE CALL SINCE DATA IS STORED
         else:
             print("Lobby is not valid")
-            print("Current counts:", role_count)
+            print("Current roles:", role_count)
             return await interaction.followup.send(
                 embed=BotErrorEmbed(
-                    description='The lobby does not have the correct amount of roles.'),
+                    description='Invalid role structure, you must have 2 backlines, 2 supports, and 4 slayers.'),
                 ephemeral=True
             )
 
-        await interaction.channel.send(embed=BotConfirmationEmbed(description=f'{[member.name for member in current_lobby]}'))
+        await interaction.followup.send(
+            embed=BotConfirmationEmbed(description=f'{[member.name for member in current_lobby]}'), ephemeral=True)
+
+
         # TODO: DELETE THE SENT EMBED USING IDS THEN RESEND AND UPDATE DB MESSAGE ID
         # channel = bot.get_channel(channel_id)  # gets the channel object from cache
         # if channel is None:

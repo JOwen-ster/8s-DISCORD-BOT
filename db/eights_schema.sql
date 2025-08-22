@@ -15,6 +15,7 @@ CREATE TABLE IF NOT EXISTS players (
     game_ref BIGINT NOT NULL,
     user_id BIGINT NOT NULL,
     isHost BOOLEAN DEFAULT FALSE,
+    isAlpha BOOLEAN,
     PRIMARY KEY (game_ref, user_id),
     FOREIGN KEY (game_ref) REFERENCES game_sessions(game_id) ON DELETE CASCADE
 );
@@ -23,5 +24,5 @@ CREATE TABLE IF NOT EXISTS role_views (
     custom_button_id VARCHAR PRIMARY KEY,
     guild_id BIGINT NOT NULL,
     channel_id BIGINT NOT NULL,
-    message_id BIGINT NOT NULL,
+    message_id BIGINT NOT NULL
 );
