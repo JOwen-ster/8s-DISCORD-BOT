@@ -62,6 +62,14 @@ async def insert_full_game_session(
     print(game_id)
     return game_id  # return the new session id so you can use it later
 
+async def select_players(connection_pool: Pool, *player_ids: int):
+    if not player_ids:
+        return []
+
+    async with connection_pool.acquire() as conn:
+        query = "SELECT * FROM players WHERE user_id = ANY($1::BIGINT[])"
+        return await conn.fetch(query, list(player_ids))
+
 async def print_tables(connection_pool: Pool):
     async with connection_pool.acquire() as conn:
         # game_sessions

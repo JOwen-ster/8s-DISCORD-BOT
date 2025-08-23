@@ -4,7 +4,7 @@ from discord.ext import commands
 import db.operations
 import db.checks
 import utils.discord_checks
-from utils.discord_checks import REQUIRED_ROLES 
+import utils.init_teams
 from utils.embeds import BotConfirmationEmbed, BotErrorEmbed,FullTeamsEmbed
 from utils.loggingsetup import getlog
 
@@ -16,8 +16,6 @@ class EightsGame(commands.Cog):
     @app_commands.command(name='8s-start')
     async def start_users_eights_game(self, interaction: discord.Interaction):
         await interaction.response.send_message(embed=BotConfirmationEmbed(description='Starting...'), ephemeral=True)
-        await interaction.channel.send(embed=FullTeamsEmbed())
-        await interaction.followup.send(embed=BotConfirmationEmbed(description='✅Started!'), ephemeral=True)
         # check db to see if user already in a started game
         # only hosts should be able top start
         # check if user id in players (account for categoeies being named the same name
@@ -90,13 +88,17 @@ class EightsGame(commands.Cog):
             )
         lobby_member_ids = (member.id for member in lobby_channel.members)
 
-        valid_role_structure, role_count, current_lobby, role_map = await utils.discord_checks.check_role_structure(
+        is_valid_role_structure, role_count, current_lobby, role_map = await utils.discord_checks.check_role_structure(
             self.bot,
             guild.id,
             *lobby_member_ids
         )
+        # when calling shuffle the last 2 current teams will be passed in
+        # they will be created via fetching user ids and isAlpha for that session via host_id then finding roles in Discord
+        init_alpha_team, init_bravo_team = utils.init_teams.split_into_teams(role_map)
+        await interaction.channel.send(embed=FullTeamsEmbed(init_alpha_team, init_bravo_team))
 
-        if valid_role_structure and len(current_lobby) == 8:
+        if is_valid_role_structure and len(current_lobby) == 8:
             print("Lobby is valid")
             await db.operations.insert_full_game_session(
                 self.bot.db_pool,
@@ -126,6 +128,7 @@ class EightsGame(commands.Cog):
         await interaction.followup.send(
             embed=BotConfirmationEmbed(description=f'{[member.name for member in current_lobby]}'), ephemeral=True)
 
+        await interaction.channel.send(embed=BotConfirmationEmbed(description='✅Started!'))
 
         # TODO: DELETE THE SENT EMBED USING IDS THEN RESEND AND UPDATE DB MESSAGE ID
         # channel = bot.get_channel(channel_id)  # gets the channel object from cache

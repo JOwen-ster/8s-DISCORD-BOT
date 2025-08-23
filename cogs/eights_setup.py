@@ -142,6 +142,7 @@ class CreatorSetup(commands.Cog):
                 return
 
         # --- LEAVE / MOVE OUT OF GAME CHANNEL ---
+        # CHECK IF GAME WAS IN DATABASE IF NOT DELETE IT FROM GAME SESSIONS THEN DELETE IN DISCORD
         if before.channel and before.channel.category and before.channel.category.name.startswith('8s_Game_'):
             category = before.channel.category
             if all(len(vc.members) == 0 for vc in category.voice_channels):
