@@ -1,6 +1,6 @@
 import discord
 from discord.ext import commands, tasks
-from utils.loggingsetup import getlog
+from utils.logging_setup import getlog
 
 
 class Moderation(commands.Cog):

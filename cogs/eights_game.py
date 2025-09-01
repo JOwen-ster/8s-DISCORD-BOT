@@ -4,9 +4,9 @@ from discord.ext import commands
 import db.operations
 import db.checks
 import utils.discord_checks
-import utils.init_teams
-from utils.embeds import BotConfirmationEmbed, BotErrorEmbed,FullTeamsEmbed
-from utils.loggingsetup import getlog
+from utils.shuffle import split_into_teams
+from utils.embeds import BotConfirmationEmbed, BotErrorEmbed, FullTeamsEmbed, send_error
+from utils.logging_setup import getlog
 
 
 class EightsGame(commands.Cog):
@@ -17,92 +17,69 @@ class EightsGame(commands.Cog):
     async def start_users_eights_game(self, interaction: discord.Interaction):
         await interaction.response.send_message(embed=BotConfirmationEmbed(description='Starting...'), ephemeral=True)
         # check db to see if user already in a started game
-        # only hosts should be able top start
+        # only hosts should be able to start
         # check if user id in players (account for categoeies being named the same name
-        # like I make a lobby then have a friend join and I leave to use the generator again
-        # but the first one to start will be added to players)
-        if '8s-chat' != interaction.channel.name:
-            return await interaction.followup.send(embed=BotErrorEmbed(
-                description='Please run this command in a `8s-chat` text channel'),
-                ephemeral=True
-            )
+        # EX. I make a lobby then have a friend join. I leave and use the generator again.
+        # The first chat I use /8s-start in will be the one registered since both have my category name
+        # channel restriction
+        if interaction.channel.name != '8s-chat':
+            return await send_error(interaction, "Please run this command in a `8s-chat` text channel")
 
         user_id = interaction.user.id
-        response = db.checks.is_playing(self.bot.db_pool, user_id)
-        if response:
-            return await interaction.followup.send(embed=BotErrorEmbed(
-                description='You must not be in a started game, please leave or end it.'),
-                ephemeral=True
-            )
+        if db.checks.is_playing(self.bot.db_pool, user_id):
+            return await send_error(interaction, "You must not be in a started game, please leave or end it.")
 
-        # check name of category and use the user id in that for the host
+        # category and required channels
         guild = interaction.guild
-        matched_category_name = f"8s_Game_{user_id}"
-        category = discord.utils.get(guild.categories, name=matched_category_name)
+        category = discord.utils.get(guild.categories, name=f"8s_Game_{user_id}")
         if not category:
-            return await interaction.followup.send(embed=BotErrorEmbed(
-                description='No 8s category with your user id found in this guild.'),
-                ephemeral=True
-            )
+            return await send_error(interaction, "No 8s category with your user id found in this guild.")
 
-        chat_channel= discord.utils.get(category.text_channels, name="8s-chat")
-        lobby_channel = discord.utils.get(category.voice_channels, name="8s-Lobby")
-        alpha_channel = discord.utils.get(category.voice_channels, name="8s-Alpha")
-        bravo_channel = discord.utils.get(category.voice_channels, name="8s-Bravo")
+        required_channels = {
+            "chat_channel": ("8s-chat", category.text_channels, "Your `8s-chat` was not found."),
+            "lobby_channel": ("8s-Lobby", category.voice_channels, "Your `8s-Lobby` was not found."),
+            "alpha_channel": ("8s-Alpha", category.voice_channels, "Your `8s-Alpha` call was not found."),
+            "bravo_channel": ("8s-Bravo", category.voice_channels, "Your `8s-Bravo` call was not found."),
+        }
 
-        if not chat_channel:
-            return await interaction.followup.send(
-                embed=BotErrorEmbed(description="Your 8s-chat was not found."),
-                ephemeral=True
-            )
+        channels = {}
+        for identifier, (name, group, error_msg) in required_channels.items():
+            channel = discord.utils.get(group, name=name)
+            if not channel:
+                return await send_error(interaction, error_msg)
+            channels[identifier] = channel
+        chat_channel = channels['chat_channel']
+        lobby_channel = channels['lobby_channel']
+        alpha_channel = channels['alpha_channel']
+        bravo_channel = channels['bravo_channel']
 
-        if not lobby_channel:
-            return await interaction.followup.send(
-                embed=BotErrorEmbed(description="Your 8s-Lobby call was not found."),
-                ephemeral=True
-            )
-
+        # host and player count checks
         if interaction.user not in lobby_channel.members:
-            return await interaction.followup.send(
-                embed=BotErrorEmbed(
-                    description="You must be inside your own 8s-Lobby voice channel to start the game."),
-                ephemeral=True
-            )
-
-        if not alpha_channel:
-            return await interaction.followup.send(
-                embed=BotErrorEmbed(description="Your 8s-Alpha call was not found."),
-                ephemeral=True
-            )
-
-        if not bravo_channel:
-            return await interaction.followup.send(
-                embed=BotErrorEmbed(description="Your 8s-Bravo call was not found."),
-                ephemeral=True
+            return await send_error(
+                interaction, 'You must `be inside your own 8s-Lobby` voice channel to start the game.'
             )
 
         if len(lobby_channel.members) != 8:
-            return await interaction.followup.send(
-                embed=BotErrorEmbed(description="The lobby must have exactly 8 players."),
-                ephemeral=True
+            return await send_error(
+                interaction, 'The lobby must have `exactly 8` players. **SPECTATORS MUST LEAVE AND JOIN AFTER START**'
             )
+
         lobby_member_ids = (member.id for member in lobby_channel.members)
 
         is_valid_role_structure, role_count, current_lobby, role_map = await utils.discord_checks.check_role_structure(
             self.bot,
             guild.id,
-            *lobby_member_ids
+            lobby_member_ids
         )
         # when calling shuffle the last 2 current teams will be passed in
         # they will be created via fetching user ids and isAlpha for that session via host_id then finding roles in Discord
-        init_alpha_team, init_bravo_team = utils.init_teams.split_into_teams(role_map)
-        await interaction.channel.send(embed=FullTeamsEmbed(init_alpha_team, init_bravo_team))
+        init_alpha_team, init_bravo_team = split_into_teams(role_map)
 
         if is_valid_role_structure and len(current_lobby) == 8:
-            print("Lobby is valid")
-            await db.operations.insert_full_game_session(
+            getlog().info(f'VALID TEAM SETUP FOR {user_id} - INSERTING INTO DATABASE')
+            teams_embed = await interaction.channel.send(embed=FullTeamsEmbed(init_alpha_team, init_bravo_team))
+            game_id = await db.operations.insert_full_game_session(
                 self.bot.db_pool,
-                # game_id uses auto incrememnt
                 guild_id=guild.id,
                 category_id=category.id,
                 chat_id=chat_channel.id,
@@ -112,23 +89,24 @@ class EightsGame(commands.Cog):
                 host_id=user_id,
                 lobby_members=current_lobby,
                 isAlpha=None,
-                isStarted=True
+                isStarted=True,
+                team_message_id=teams_embed.id
             )
             await db.operations.print_tables(self.bot.db_pool)
-            # TODO: SEND EMBED THAT YOU MAY NOW LEAVE CALL SINCE DATA IS STORED
+            getlog().info(f'CREATED GAME FOR {user_id} - SESSION_ID: {game_id}')
         else:
-            print("Lobby is not valid")
-            print("Current roles:", role_count)
+            getlog().info(f'IN-VALID TEAM SETUP FOR {user_id} - Current roles: {role_count}')
             return await interaction.followup.send(
                 embed=BotErrorEmbed(
                     description='Invalid role structure, you must have 2 backlines, 2 supports, and 4 slayers.'),
                 ephemeral=True
             )
 
-        await interaction.followup.send(
-            embed=BotConfirmationEmbed(description=f'{[member.name for member in current_lobby]}'), ephemeral=True)
+        await interaction.channel.send(embed=BotConfirmationEmbed(
+                description='Players successfuly stored! You may now choose to stay in team voice calls or leave.')
+            )
 
-        await interaction.channel.send(embed=BotConfirmationEmbed(description='✅Started!'))
+        await interaction.channel.send(embed=BotConfirmationEmbed(title='✅Game Started', description='Good luck everyone!'))
 
         # TODO: DELETE THE SENT EMBED USING IDS THEN RESEND AND UPDATE DB MESSAGE ID
         # channel = bot.get_channel(channel_id)  # gets the channel object from cache

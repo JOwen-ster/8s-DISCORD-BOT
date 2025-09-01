@@ -59,6 +59,13 @@ class FullTeamsEmbed(Embed):
             self.set_field_at(1, name="Bravo Team", value=self.bravo_text, inline=False)
 
 
+async def send_error(interaction, message: str):
+    return await interaction.followup.send(
+        embed=BotErrorEmbed(description=message),
+        ephemeral=True
+    )
+
+
 def createEmbedFields(embed_title: str, **fields):
     embed = Embed(
         title=embed_title,

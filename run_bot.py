@@ -2,7 +2,7 @@ import asyncio
 import botclient
 import discord
 import asyncpg
-from utils.loggingsetup import getlog
+from utils.logging_setup import getlog
 from dotenv import load_dotenv
 from os import getenv
 
@@ -11,9 +11,6 @@ from os import getenv
 # If you are not using docker to run this application, that env var will never be loaded
 # This is how we switch from locally running to runing in a containerized environment
 is_containerized = getenv("IS_DOCKER_CONTAINER") # True or None
-
-async def confirmation():
-    getlog().info('Running main bot instance...')
 
 async def main() -> None:
     load_dotenv()
@@ -24,10 +21,10 @@ async def main() -> None:
         env_msg = 'Docker Environment Variable Set - Using Container Env Vars.'
         getlog().info(env_msg)
         print(env_msg)
-        DB_USER = getenv('POSTGRES_USER')    
+        DB_USER = getenv('POSTGRES_USER')
         DB_PASS = getenv('POSTGRES_PASSWORD')
-        DB_NAME = getenv('POSTGRES_DB')   
-        DB_HOST = getenv('POSTGRES_HOST')    
+        DB_NAME = getenv('POSTGRES_DB')
+        DB_HOST = getenv('POSTGRES_HOST')
         DB_PORT = getenv('POSTGRES_PORT')
         loaded_env_msg = 'Loaded Container Environment Variables.'
         getlog().info(loaded_env_msg)
@@ -49,8 +46,7 @@ async def main() -> None:
     assert TOKEN is not None, 'Missing Discord Bot Token'
     assert all([DB_USER, DB_PASS, DB_NAME, DB_HOST, DB_PORT]), 'Missing Database Environment Variables'
 
-    # Run other async tasks
-    await confirmation()
+    getlog().info('Running...')
 
     # Data Source Name
     POSTGRE_DSN = f'postgres://{DB_USER}:{DB_PASS}@{DB_HOST}:{DB_PORT}/{DB_NAME}'

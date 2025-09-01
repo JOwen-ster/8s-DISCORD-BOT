@@ -1,8 +1,9 @@
 from cogs import extensions
 import asyncpg
 from discord.ext import commands
-from utils.loggingsetup import getlog
+from utils.logging_setup import getlog
 import db.setup_db
+from utils.role_select_view import RoleSelectView
 
 
 class Bot(commands.Bot):
@@ -20,14 +21,20 @@ class Bot(commands.Bot):
             except Exception as e:
                 getlog().error(f'Could not load {cog} cog ({i}/{len(extensions)}): {e}')
 
+        getlog().info('Verifying database connection...')
         await db.setup_db.verify_database_connection(
             connection_pool=self.db_pool
         )
 
+        getlog().info('Executing schema files...')
         await db.setup_db.execute_schema_files(
             connection_pool=self.db_pool,
             schemas_path='./db'
         )
+
+        getlog().info('Adding persistent views...')
+        for guild in self.guilds:
+            self.add_view(RoleSelectView(guild.id))
 
         getlog().info('Ran bot setup_hook!')
 

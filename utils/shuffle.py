@@ -6,17 +6,43 @@
 
 import random
 
-async def shuffle_teams(player_map: dict[int, str]) -> tuple[dict[str, str | list[str]]]:
+
+def split_into_teams(players_map: dict[int, str]):
+    if len(players_map) != 8: 
+        return
+
+    backlines, supports, slayers = [], [], []
+
+    for id, role_name in players_map.items():
+        match role_name:
+            case "8s-backline":
+                backlines.append(id)
+            case "8s-support":
+                supports.append(id)
+            case _:
+                slayers.append(id)
+
+    alpha = {
+        "backline": backlines[0],
+        "support": supports[0],
+        "slayers": [slayers[0], slayers[1]],
+    }
+
+    bravo = {
+        "backline": backlines[1],
+        "support": supports[1],
+        "slayers": [slayers[2], slayers[3]],
+    }
+
+    return alpha, bravo
+
+
+# takes in a dict of user_id : role_name
+async def shuffle_teams(player_map: dict[int, str], prev_alpha, prev_bravo) -> tuple[dict[str, str | list[str]]]:
     """
-    Shuffle 8 players into alpha and bravo teams based on role rules.
+    - Shuffle 8 players into alpha and bravo teams based on role rules.
 
-    Parameters:
-    - player_map: Dict[player_id, role] where role is one of
-    "8s-backline", "8s-support", "8s-slayer"
-
-    Returns:
-    - Tuple of two dicts: (alpha_team, bravo_team)
-    Each dict has keys: "backline", "support", "slayers"
+    - Returns a Tuple of two dicts representing teams. Each dict has keys: "backline", "support", "slayers"
     """
 
     # Separate players by role

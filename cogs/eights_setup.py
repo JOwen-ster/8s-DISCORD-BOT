@@ -3,7 +3,7 @@ from discord import app_commands
 from discord.ext import commands
 from utils.role_select_view import RoleSelectView
 from utils.embeds import BotConfirmationEmbed, BotErrorEmbed
-from utils.loggingsetup import getlog
+from utils.logging_setup import getlog
 
 
 class CreatorSetup(commands.Cog):

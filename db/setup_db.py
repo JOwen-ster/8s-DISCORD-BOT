@@ -1,7 +1,7 @@
 import aiofiles
 from asyncpg import Pool
 from pathlib import Path
-from utils.loggingsetup import getlog
+from utils.logging_setup import getlog
 
 
 async def verify_database_connection(connection_pool: Pool):

@@ -1,4 +1,4 @@
-from utils.loggingsetup import getlog
+from utils.logging_setup import getlog
 from asyncpg import Pool
 
 
