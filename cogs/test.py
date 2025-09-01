@@ -3,7 +3,7 @@ from discord import app_commands
 from discord.ext import commands
 from utils.embeds import BotConfirmationEmbed
 from utils.embeds import createEmbedFields
-from utils.loggingsetup import getlog
+from utils.logging_setup import getlog
 
 
 class Test(commands.Cog):

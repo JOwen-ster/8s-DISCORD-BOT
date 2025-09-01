@@ -4,7 +4,7 @@ import discord
 class RoleSelectView(discord.ui.View):
     def __init__(self, guild_id: str):
         super().__init__(timeout=None)
-        self.guild_id = guild_id # guild id since each guild cani only have 1 persistent view.
+        self.guild_id = guild_id # guild id since each guild can only have 1 persistent view.
         self.ROLE_MAP = {
             "Backline": "8s-backline",
             "Support": "8s-support",

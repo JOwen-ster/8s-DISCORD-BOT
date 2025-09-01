@@ -20,3 +20,13 @@ logger.addHandler(handler)
 def getlog():
     global logger
     return logger
+
+def log(msg, log_type='info'):
+    current_logger = getlog()
+    match log_type.lower():
+        case 'info':
+            current_logger.info(msg)
+        case 'error':
+            current_logger.error(msg)
+        case 'debug':
+            current_logger.debug(msg)

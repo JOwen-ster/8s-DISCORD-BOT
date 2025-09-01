@@ -5,11 +5,12 @@ A [Discord](https://discord.com/) bot that AUTOMATICALLY manages the community m
 
 
 ## Features
+
 * Setup Command (/8s-setup)
   * Creates a Rules channel telling users how 8s is played and how to use the bot
   * Creates a category and 4 voice channels with a limit of 1 person (these are 8s-creator vc's)
   * A command to give you the role of either slayer, backline, or support is able to then be used
-  * When someone joins this voice call it creates a new category in that Discord server 
+  * When someone joins this voice call it creates a new category in that Discord server
   * A Lobby voice channel is created with a limit of 8 people (limit will be set to 10 once the game start to allow specs)
   * If the lobby channel becomes empty at any time that 8s session will be deleted from the server
   * The user is dragged from the creator voice channel into the lobby and Alpha (limit 5), Bravo (limit 5), and a 8s-chat is created (bot commands will only work here except the /setup command and moderation) are created
@@ -26,61 +27,76 @@ A [Discord](https://discord.com/) bot that AUTOMATICALLY manages the community m
   * /8s-end ends the game (deletes everyone from the database and deletes your 8s category in the server and all channels under it) (host only or admins)
   * Another thing to mention is whoever joins the 8s-creator vc with a limit of 1 at first will be assigned host for that session. This person is only one allowed to shuffle besides admins of the server
 
-
 ## Technologies
 
 ### Language
-- [Python](https://github.com/python/cpython)
-- [Discord.py (Python Discord API Wrapper)](https://github.com/Rapptz/discord.py)
+
+* [Python](https://github.com/python/cpython)
+* [Discord.py (Python Discord API Wrapper)](https://github.com/Rapptz/discord.py)
 
 ### Database
-- [PostgreSQL](https://github.com/postgres/postgres)
-- [Async Client Library](https://github.com/MagicStack/asyncpg)
+
+* [PostgreSQL](https://github.com/postgres/postgres)
+* [Async Client Library](https://github.com/MagicStack/asyncpg)
 
 ### DevOps / Deployment
-- [Docker Compose](https://github.com/docker/compose)
+
+* [Docker Compose](https://github.com/docker/compose)
 
 ## Info
-Multi-Server Support
+
+* Multi-Server Support
   * You can have multiple 8s sessions happening all at once in a single server!
   * In addition, you can have multiple servers using the bot all at once!
-Async Database Writing for Scalability
-Containerized via Docker Compose for Deployability
-Fully Automatic Setup Command
-Fully Automatic Team Generation
-  * All players in a 8s game will be dragged to the correct team voice call automatically by the bot! No more manually switching voice calls and mixing up teams in Discord!
 
+* Async Database Writing for Scalability
+* Containerized via Docker Compose for Deployability
+* Fully Automatic Setup Command
+* Fully Automatic Team Generation
+
+> [!IMPORTANT]
+> ***All players in a 8s game will be dragged to the correct team voice call automatically by the bot! No more manually switching voice calls and mixing up teams in Discord!***
 
 ## Running Using Docker
+
 * Have the Docker Engine running (open Docker Desktop)
 * Create a `.env` file in the root of this directory and fill it out
 
 ### Build + Run
-```
+
+```bash
 docker compose up --build
 ```
 
 ### Run
-```
+
+```bash
 docker compose up
 ```
 
 ### Terminate
-```
+
+```bash
 docker compose down
 ```
 
 ### Terminate + Delete Volumes
+
 * Delete the `postgres_data` directory created in the `/db` directory
 
-```
+```bash
 docker compose down -v
 ```
 
-
 ## Running Locally Using Python
+
 * Make sure you have a Postgre server running locally and know its login information along with the database name and port
 * Create a `.env` file in the root of this directory and fill it out
+
+```bash
+pip install -r requirements.txt
 ```
+
+```bash
 python run_bot.py
 ```

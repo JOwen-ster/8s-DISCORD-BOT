@@ -9,17 +9,16 @@ async def insert_full_game_session(
     category_id: int,
     chat_id: int,
     lobby_id: int,
-    alpha_id: int,
-    bravo_id: int,
+    alpha_id: int,   # channel ID for Alpha team
+    bravo_id: int,   # channel ID for Bravo team
     host_id: int,
-    lobby_members: list[Member],   # all players (including host)
-    isAlpha: bool,
+    lobby_members: list[Member],
     isStarted: bool = False,
-    team_message_id: int | None = None,
+    team_message_id: bool | None = None,
 ):
     async with connection_pool.acquire() as conn:
         async with conn.transaction():
-            # Insert game session and get the generated game_id
+            # Insert the game session (channel IDs are stored here, not team assignment)
             game_id = await conn.fetchval(
                 """
                 INSERT INTO game_sessions (
@@ -47,20 +46,46 @@ async def insert_full_game_session(
                 team_message_id,
             )
 
-            # Insert all lobby members into players
+            # Insert all lobby members with no team yet
             for member in lobby_members:
                 await conn.execute(
                     """
                     INSERT INTO players (game_ref, user_id, isHost, isAlpha)
-                    VALUES ($1, $2, $3, $4)
+                    VALUES ($1, $2, $3, NULL)
                     """,
                     game_id,
                     member.id,
-                    member.id == host_id,  # True if host
-                    isAlpha
+                    member.id == host_id,  # True if this member is the host
                 )
-    print(game_id)
-    return game_id  # return the new session id so you can use it later
+
+    print(f"Inserted game session {game_id}")
+    return game_id
+
+async def get_current_teams(connection: Pool, host_id: int) -> tuple[list[int], list[int]]:
+    query = """
+        SELECT p.user_id, p.isAlpha
+        FROM players p
+        JOIN game_sessions gs ON p.game_ref = gs.game_id
+        WHERE gs.host_id = $1
+    """
+    
+    # Execute the query
+    rows = await connection.fetch(query, host_id)
+    
+    # Separate users into alpha and bravo teams
+    alpha_team = []
+    bravo_team = []
+    
+    for row in rows:
+        user_id = row['user_id']
+        is_alpha = row['isalpha']  # Note: asyncpg returns column names in lowercase
+        
+        if is_alpha:
+            alpha_team.append(user_id)
+        else:
+            bravo_team.append(user_id)
+    
+    return alpha_team, bravo_team
 
 async def select_players(connection_pool: Pool, *player_ids: int):
     if not player_ids:
