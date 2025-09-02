@@ -93,6 +93,30 @@ docker compose down -v
 * Make sure you have a Postgre server running locally and know its login information along with the database name and port
 * Create a `.env` file in the root of this directory and fill it out
 
+Create a virtual env to install requirements
+
+### Windows
+
+```bash
+python -m venv local_bot_development
+```
+
+```bash
+local_bot_development\Scripts\activate
+```
+
+### Linux/Mac
+
+```bash
+python3 -m venv local_bot_development
+```
+
+```bash
+source local_bot_development/bin/activate
+```
+
+After...
+
 ```bash
 pip install -r requirements.txt
 ```
@@ -100,3 +124,15 @@ pip install -r requirements.txt
 ```bash
 python run_bot.py
 ```
+
+### Terminating w/ Python
+
+* Click into your terminal
+* Press and Hold `CTRL` + `C` on your keyboard
+* Exit the virtual environment
+
+```bash
+deactivate
+```
+
+**Made with 💖 and 🔥 by `typos.` on Discord**
