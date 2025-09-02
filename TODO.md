@@ -9,3 +9,7 @@ Create a method that sends a hyperlink to the current team embed (dont delete ju
 - Get message using ids from db
 - Edit it
 - Send hyperlink
+
+## MIGRATE TO NEW LOGGING METHOD
+
+- log(<log_message>, <log_type>)
