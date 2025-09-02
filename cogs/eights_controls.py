@@ -22,5 +22,15 @@ class Controls(commands.Cog):
             )
         return await interaction.followup.send(embed=BotErrorEmbed(descrption='Could not find your 8s session...'))
 
+    @app_commands.command(name='8s-end', description='End your current 8s session.')
+    async def end_session(self, interaction: discord.Interaction):
+        await interaction.response.send_message(embed=BotMessageEmbed(description='Ending your session...'))
+        isDeleted, teams_message_id = await db.operations.delete_game_if_host(self.bot.db_pool, interaction.user.id)
+        if isDeleted:
+            message = await self.bot.user.fetch_message(teams_message_id)
+            await message.delete()
+            return await interaction.response.send_message(embed=BotConfirmationEmbed(description='Session Ended.'))
+        return await interaction.response.send_message(embed=BotErrorEmbed(description='You must be the host to end a session.'))
+
 async def setup(bot):
     await bot.add_cog(Controls(bot))

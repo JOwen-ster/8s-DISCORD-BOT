@@ -3,7 +3,8 @@ from discord import app_commands
 from discord.ext import commands
 from utils.role_select_view import RoleSelectView
 from utils.embeds import BotConfirmationEmbed, BotErrorEmbed
-from utils.logging_setup import getlog
+import db.operations
+from utils.logging_setup import getlog, log
 
 
 class CreatorSetup(commands.Cog):
@@ -18,11 +19,10 @@ class CreatorSetup(commands.Cog):
         )
         category = discord.utils.get(interaction.guild.categories, name='8s_Bot')
         if category:
-            await interaction.followup.send(
+            return await interaction.followup.send(
                 embed=BotErrorEmbed(description='Bot Setup Catgeory Already Found. No New Setup was created.'),
                 ephemeral=True
             )
-            return
 
         bot_member = interaction.guild.me
         everyone_role = interaction.guild.default_role
@@ -68,7 +68,7 @@ class CreatorSetup(commands.Cog):
                 overwrites={}
             )
 
-        await interaction.followup.send(
+        return await interaction.followup.send(
             embed=BotConfirmationEmbed(description='✅Created 8s Lobby Generators! Setup Complete!'),
             ephemeral=True
         )
@@ -76,17 +76,15 @@ class CreatorSetup(commands.Cog):
     @app_commands.command(name='8s-deactivate', description='Remove 8s Lobby Creator Category')
     async def delete_eights_setup(self, interaction: discord.Interaction):
         if not interaction.user.guild_permissions.administrator:
-            await interaction.response.send_message(
+            return await interaction.response.send_message(
                 "You must be an **Administrator** to use this command.", 
                 ephemeral=True
             )
-            return
 
         await interaction.response.send_message(embed=BotConfirmationEmbed(description='Deactivating 8s.. Finished once the 8s_Bot Category is deleted.'), ephemeral=True)
         category = discord.utils.get(interaction.guild.categories, name='8s_Bot')
         if not category:
-            await interaction.followup.send("No '8s_Bot' category found.", ephemeral=True)
-            return
+            return await interaction.followup.send("No '8s_Bot' category found.", ephemeral=True)
 
         for role in interaction.guild.roles:
             if role.name in {"8s-backline", "8s-support", "8s-slayer"}:
@@ -142,10 +140,15 @@ class CreatorSetup(commands.Cog):
                 return
 
         # --- LEAVE / MOVE OUT OF GAME CHANNEL ---
-        # CHECK IF GAME WAS IN DATABASE IF NOT DELETE IT FROM GAME SESSIONS THEN DELETE IN DISCORD
         if before.channel and before.channel.category and before.channel.category.name.startswith('8s_Game_'):
             category = before.channel.category
-            if all(len(vc.members) == 0 for vc in category.voice_channels):
+
+            # Check if the game exists in DB
+            game_exists = await db.operations.game_session_exists_by_category(self.bot.db_pool, category.id)
+
+            # Only delete if game is NOT in DB
+            if (game_exists is None) and all(len(vc.members) == 0 for vc in category.voice_channels):
+                log(f'DELETING GAME: {game_exists} BECAUSE GAME ENDED / WAS DELETED AND NO PLAYERS ARE PRESENT IN THE VALID VOICE CALLS')
                 for ch in category.channels:
                     await ch.delete()
                 await category.delete()

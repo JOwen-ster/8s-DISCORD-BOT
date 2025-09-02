@@ -105,6 +105,85 @@ async def get_team_message_id(pool, user_id: int) -> int | None:
     async with pool.acquire() as conn:
         return await conn.fetchval(query, user_id)
 
+async def delete_game_if_host(pool: Pool, user_id: int) -> tuple[bool, int | None]:
+    """
+    Deletes a game session if the given user is the host.
+    Returns (True, team_message_id) if a game was deleted,
+    (False, None) otherwise.
+    """
+    async with pool.acquire() as conn:
+        async with conn.transaction():
+            game = await conn.fetchrow(
+                """
+                SELECT game_id, team_message_id
+                FROM game_sessions
+                WHERE host_id = $1
+                """,
+                user_id
+            )
+
+            if not game:
+                return False, None
+
+            # Delete the game session
+            await conn.execute(
+                """
+                DELETE FROM game_sessions
+                WHERE game_id = $1
+                """,
+                game["game_id"]
+            )
+
+            return True, game["team_message_id"]
+
+async def delete_game_by_category(pool: Pool, category_id: int) -> int | None:
+    """
+    Deletes a game session (and its players via ON DELETE CASCADE)
+    given the category_id.
+
+    Returns the game_id if a game was deleted, None otherwise.
+    """
+    async with pool.acquire() as conn:
+        async with conn.transaction():
+            game_id = await conn.fetchval(
+                """
+                SELECT game_id
+                FROM game_sessions
+                WHERE category_id = $1
+                """,
+                category_id
+            )
+
+            if not game_id:
+                return None  # no game in this category
+
+            await conn.execute(
+                """
+                DELETE FROM game_sessions
+                WHERE game_id = $1
+                """,
+                game_id
+            )
+
+            return game_id
+
+async def game_session_exists_by_category(pool: Pool, category_id: int) -> int | None:
+    """
+    Checks if a game session exists for the given category_id.
+    
+    Returns the game_id if it exists, None otherwise.
+    """
+    async with pool.acquire() as conn:
+        game_id = await conn.fetchval(
+            """
+            SELECT game_id
+            FROM game_sessions
+            WHERE category_id = $1
+            """,
+            category_id
+        )
+        return game_id
+
 async def print_tables(connection_pool: Pool):
     async with connection_pool.acquire() as conn:
         # game_sessions
