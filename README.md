@@ -1,8 +1,8 @@
 # 8s-DISCORD-BOT
-A [Discord](https://discord.com/) bot that AUTOMATICALLY manages the community made [Splatoon](https://splatoon.nintendo.com/) gamemode, **8s.**
+
+A [Discord](https://discord.com/) bot that AUTOMATICALLY manages the community made [Splatoon](https://splatoon.nintendo.com/) game mode, **8s.**
 
 [TODO](TODO.md)
-
 
 ## Features
 
