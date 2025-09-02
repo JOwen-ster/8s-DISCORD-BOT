@@ -95,6 +95,16 @@ async def select_players(connection_pool: Pool, player_ids: list[int]):
         query = "SELECT * FROM players WHERE user_id = ANY($1::BIGINT[])"
         return await conn.fetch(query, player_ids)
 
+async def get_team_message_id(pool, user_id: int) -> int | None:
+    query = """
+        SELECT gs.team_message_id
+        FROM game_sessions gs
+        JOIN players p ON gs.game_id = p.game_ref
+        WHERE p.user_id = $1
+    """
+    async with pool.acquire() as conn:
+        return await conn.fetchval(query, user_id)
+
 async def print_tables(connection_pool: Pool):
     async with connection_pool.acquire() as conn:
         # game_sessions

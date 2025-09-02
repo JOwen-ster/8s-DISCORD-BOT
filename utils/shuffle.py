@@ -94,3 +94,8 @@ async def drag_teams(players: list[discord.Member], split_alpha_map, split_bravo
             await player.move_to(bravo_chnl)
         else:
             log(f'Player {player.name} - ID:{player.id} not on a team, skipping...')
+
+async def edit_embed(bot, message_id):
+    current_team_embed_message = await bot.user.fetch_message(message_id)
+    embed_example = discord.Embed(description='.')
+    await current_team_embed_message.edit(embed=embed_example)
