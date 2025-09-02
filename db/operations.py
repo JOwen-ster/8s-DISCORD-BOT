@@ -9,8 +9,8 @@ async def insert_full_game_session(
     category_id: int,
     chat_id: int,
     lobby_id: int,
-    alpha_id: int,   # channel ID for Alpha team
-    bravo_id: int,   # channel ID for Bravo team
+    alpha_id: int,
+    bravo_id: int,
     host_id: int,
     lobby_members: list[Member],
     isStarted: bool = False,
@@ -68,18 +68,18 @@ async def get_current_teams(connection: Pool, host_id: int) -> tuple[list[int], 
         JOIN game_sessions gs ON p.game_ref = gs.game_id
         WHERE gs.host_id = $1
     """
-    
+
     # Execute the query
     rows = await connection.fetch(query, host_id)
-    
+
     # Separate users into alpha and bravo teams
     alpha_team = []
     bravo_team = []
-    
+
     for row in rows:
         user_id = row['user_id']
-        is_alpha = row['isalpha']  # Note: asyncpg returns column names in lowercase
-        
+        is_alpha = row['isalpha']  # asyncpg returns column names in lowercase
+
         if is_alpha:
             alpha_team.append(user_id)
         else:
@@ -87,13 +87,13 @@ async def get_current_teams(connection: Pool, host_id: int) -> tuple[list[int], 
     
     return alpha_team, bravo_team
 
-async def select_players(connection_pool: Pool, *player_ids: int):
+async def select_players(connection_pool: Pool, player_ids: list[int]):
     if not player_ids:
         return []
 
     async with connection_pool.acquire() as conn:
         query = "SELECT * FROM players WHERE user_id = ANY($1::BIGINT[])"
-        return await conn.fetch(query, list(player_ids))
+        return await conn.fetch(query, player_ids)
 
 async def print_tables(connection_pool: Pool):
     async with connection_pool.acquire() as conn:

@@ -205,4 +205,4 @@ __marimo__/
 db/postgres_data/
 
 NOTES.md
-test_shuffle.py
+update_teams.py

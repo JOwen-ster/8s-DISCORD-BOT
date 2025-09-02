@@ -5,11 +5,16 @@
 # check isAlpha column for each player using their id, build 2 current teams then shuffle
 
 import random
+import discord
+from logging_setup import log
 
 
 def split_into_teams(players_map: dict[int, str]):
+    '''
+    Split players (id) based on their selected role
+    '''
     if len(players_map) != 8: 
-        return
+        return None, None
 
     backlines, supports, slayers = [], [], []
 
@@ -77,3 +82,15 @@ async def shuffle_teams(player_map: dict[int, str], prev_alpha, prev_bravo) -> t
     }
 
     return alpha_team, bravo_team
+
+async def drag_teams(players: list[discord.Member], split_alpha_map, split_bravo_map, bot, alpha_channel_id, bravo_channel_id):
+    alpha_chnl = await bot.get_channel(alpha_channel_id) or await bot.fetch_channel(alpha_channel_id)
+    bravo_chnl = await bot.get_channel(bravo_channel_id) or await bot.fetch_channel(bravo_channel_id)
+
+    for player in players:
+        if player.id in split_alpha_map.keys():
+            await player.move_to(alpha_chnl)
+        elif player.id in split_bravo_map.keys():
+            await player.move_to(bravo_chnl)
+        else:
+            log(f'Player {player.name} - ID:{player.id} not on a team, skipping...')

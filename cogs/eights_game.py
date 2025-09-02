@@ -4,7 +4,7 @@ from discord.ext import commands
 import db.operations
 import db.checks
 import utils.discord_checks
-from utils.shuffle import split_into_teams
+from utils.shuffle import split_into_teams, drag_teams
 from utils.embeds import BotConfirmationEmbed, BotErrorEmbed, FullTeamsEmbed, send_error
 from utils.logging_setup import getlog
 
@@ -92,6 +92,7 @@ class EightsGame(commands.Cog):
                 isStarted=True,
                 team_message_id=teams_embed.id
             )
+
             await db.operations.print_tables(self.bot.db_pool)
             getlog().info(f'CREATED GAME FOR {user_id} - SESSION_ID: {game_id}')
         else:
@@ -101,12 +102,16 @@ class EightsGame(commands.Cog):
                     description='Invalid role structure, you must have 2 backlines, 2 supports, and 4 slayers.'),
                 ephemeral=True
             )
+        await drag_teams(current_lobby, init_alpha_team, init_bravo_team, self.bot, alpha_channel.id, bravo_channel.id)
 
         await interaction.channel.send(embed=BotConfirmationEmbed(
                 description='Players successfuly stored! You may now choose to stay in team voice calls or leave.')
             )
 
-        await interaction.channel.send(embed=BotConfirmationEmbed(title='✅Game Started', description='Good luck everyone!'))
+        await interaction.channel.send(embed=BotConfirmationEmbed(
+            title='✅Game Started',
+            description=f'Your game_session_id is {game_id} Good luck everyone!')
+        )
 
         # TODO: DELETE THE SENT EMBED USING IDS THEN RESEND AND UPDATE DB MESSAGE ID
         # channel = bot.get_channel(channel_id)  # gets the channel object from cache
