@@ -7,3 +7,7 @@ Create website with info and links to Discord Server and Repo
 ## MIGRATE TO NEW LOGGING METHOD
 
 - log(<log_message>, <log_type>)
+
+use `del` after making objects (views and embeds)
+
+MAKE BUTTON DISABLED WHEN CLICKING SHUFFLE AND END UNTIL THE ACTION IS FULLY DONE

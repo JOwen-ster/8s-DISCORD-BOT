@@ -184,6 +184,24 @@ async def game_session_exists_by_category(pool: Pool, category_id: int) -> int |
         )
         return game_id
 
+async def is_host(pool: Pool, user_id: int) -> bool:
+    """
+    Returns True, guild_id, chat_id, and team_message_id if the given user_id is a host in any game session.
+    """
+    async with pool.acquire() as conn:
+        row = await conn.fetchrow(
+            """
+            SELECT guild_id, chat_id, team_message_id
+            FROM game_sessions
+            WHERE host_id = $1
+            LIMIT 1
+            """,
+            user_id
+        )
+        if row:
+            return True, row["guild_id"], row["chat_id"], row["team_message_id"]
+        return False
+
 async def print_tables(connection_pool: Pool):
     async with connection_pool.acquire() as conn:
         # game_sessions

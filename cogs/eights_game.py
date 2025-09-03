@@ -3,7 +3,7 @@ from discord import app_commands
 from discord.ext import commands
 import db.operations
 import db.checks
-import utils.discord_checks
+import utils.role_checks
 from utils.shuffle import split_into_teams, drag_teams
 from utils.embeds import BotConfirmationEmbed, BotErrorEmbed, FullTeamsEmbed, send_error
 from utils.logging_setup import getlog
@@ -66,7 +66,7 @@ class EightsGame(commands.Cog):
 
         lobby_member_ids = (member.id for member in lobby_channel.members)
 
-        is_valid_role_structure, role_count, current_lobby, role_map = await utils.discord_checks.check_role_structure(
+        is_valid_role_structure, role_count, current_lobby, role_map = await utils.role_checks.check_role_structure(
             self.bot,
             guild.id,
             lobby_member_ids
