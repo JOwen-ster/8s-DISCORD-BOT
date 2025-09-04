@@ -40,23 +40,22 @@ class FullTeamsEmbed(Embed):
         self.add_field(name="Alpha Team", value=self.alpha_text, inline=False)
         self.add_field(name="Bravo Team", value=self.bravo_text, inline=False)
 
-    # WONT NEED SINCE EMBEDS GET DELETED NOT EDITED
-    def update_team(self, alpha_team=None, bravo_team=None):
-        if alpha_team:
-            self.alpha_text = (
-                f"Backline: <@{alpha_team['backline']}>\n"
-                f"Support: <@{alpha_team['support']}>\n"
-                f"Slayers: {', '.join(f'<@{s}>' for s in alpha_team['slayers'])}"
-            )
-            self.set_field_at(0, name="Alpha Team", value=self.alpha_text, inline=False)
+    # def update_team(self, alpha_team=None, bravo_team=None):
+    #     if alpha_team:
+    #         self.alpha_text = (
+    #             f"Backline: <@{alpha_team['backline']}>\n"
+    #             f"Support: <@{alpha_team['support']}>\n"
+    #             f"Slayers: {', '.join(f'<@{s}>' for s in alpha_team['slayers'])}"
+    #         )
+    #         self.set_field_at(0, name="Alpha Team", value=self.alpha_text, inline=False)
 
-        if bravo_team:
-            self.bravo_text = (
-                f"Backline: <@{bravo_team['backline']}>\n"
-                f"Support: <@{bravo_team['support']}>\n"
-                f"Slayers: {', '.join(f'<@{s}>' for s in bravo_team['slayers'])}"
-            )
-            self.set_field_at(1, name="Bravo Team", value=self.bravo_text, inline=False)
+    #     if bravo_team:
+    #         self.bravo_text = (
+    #             f"Backline: <@{bravo_team['backline']}>\n"
+    #             f"Support: <@{bravo_team['support']}>\n"
+    #             f"Slayers: {', '.join(f'<@{s}>' for s in bravo_team['slayers'])}"
+    #         )
+    #         self.set_field_at(1, name="Bravo Team", value=self.bravo_text, inline=False)
 
 
 async def send_error(interaction, message: str):

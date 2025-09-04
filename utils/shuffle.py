@@ -43,7 +43,7 @@ def split_into_teams(players_map: dict[int, str]):
 
 
 # takes in a dict of user_id : role_name
-async def shuffle_teams(player_map: dict[int, str], prev_alpha, prev_bravo) -> tuple[dict[str, str | list[str]]]:
+async def shuffle_teams(player_map: dict[int, str], prev_alpha_slayers, prev_bravo_slayers) -> tuple[dict[str, str | list[str]]]:
     """
     - Shuffle 8 players into alpha and bravo teams based on role rules.
 

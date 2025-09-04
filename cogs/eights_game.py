@@ -78,6 +78,12 @@ class EightsGame(commands.Cog):
         if is_valid_role_structure and len(current_lobby) == 8:
             getlog().info(f'VALID TEAM SETUP FOR {user_id} - INSERTING INTO DATABASE')
             teams_embed = await interaction.channel.send(embed=FullTeamsEmbed(init_alpha_team, init_bravo_team))
+            
+            # TODO: CHANGE METHOD TO SET TEAMS AT START DONT MAKE NONE THIS CAUSES ISSUES WITH SHUFFLE
+            # Pass in init teams
+            #when insert into players check if backline or support and make it first
+            #occurance alpha then the second occurance bravo
+            # For slayers first 2 occurances are alpha 3rd and 4th are bravo
             game_id = await db.operations.insert_full_game_session(
                 self.bot.db_pool,
                 guild_id=guild.id,

@@ -13,12 +13,12 @@ async def insert_full_game_session(
     bravo_id: int,
     host_id: int,
     lobby_members: list[Member],
-    isStarted: bool = False,
-    team_message_id: bool | None = None,
+    is_started: bool = True,
+    team_message_id: int | None = None,
 ):
     async with connection_pool.acquire() as conn:
         async with conn.transaction():
-            # Insert the game session (channel IDs are stored here, not team assignment)
+            # Insert the game session
             game_id = await conn.fetchval(
                 """
                 INSERT INTO game_sessions (
@@ -42,21 +42,23 @@ async def insert_full_game_session(
                 alpha_id,
                 bravo_id,
                 host_id,
-                isStarted,
+                is_started,
                 team_message_id,
             )
 
-            # Insert all lobby members with no team yet
-            for member in lobby_members:
-                await conn.execute(
-                    """
-                    INSERT INTO players (game_ref, user_id, isHost, isAlpha)
-                    VALUES ($1, $2, $3, NULL)
-                    """,
-                    game_id,
-                    member.id,
-                    member.id == host_id,  # True if this member is the host
-                )
+            player_values = [
+                (game_id, member.id, member.id == host_id, None)
+                for member in lobby_members
+            ]
+
+            # Bulk insert all players at once
+            await conn.executemany(
+                """
+                INSERT INTO players (game_ref, user_id, isHost, isAlpha)
+                VALUES ($1, $2, $3, $4)
+                """,
+                player_values,
+            )
 
     print(f"Inserted game session {game_id}")
     return game_id
@@ -86,14 +88,6 @@ async def get_current_teams(connection: Pool, host_id: int) -> tuple[list[int], 
             bravo_team.append(user_id)
     
     return alpha_team, bravo_team
-
-async def select_players(connection_pool: Pool, player_ids: list[int]):
-    if not player_ids:
-        return []
-
-    async with connection_pool.acquire() as conn:
-        query = "SELECT * FROM players WHERE user_id = ANY($1::BIGINT[])"
-        return await conn.fetch(query, player_ids)
 
 async def get_team_message_id(pool, user_id: int) -> int | None:
     query = """
@@ -183,24 +177,6 @@ async def game_session_exists_by_category(pool: Pool, category_id: int) -> int |
             category_id
         )
         return game_id
-
-async def is_host(pool: Pool, user_id: int) -> bool:
-    """
-    Returns True, guild_id, chat_id, and team_message_id if the given user_id is a host in any game session.
-    """
-    async with pool.acquire() as conn:
-        row = await conn.fetchrow(
-            """
-            SELECT guild_id, chat_id, team_message_id
-            FROM game_sessions
-            WHERE host_id = $1
-            LIMIT 1
-            """,
-            user_id
-        )
-        if row:
-            return True, row["guild_id"], row["chat_id"], row["team_message_id"]
-        return False
 
 async def print_tables(connection_pool: Pool):
     async with connection_pool.acquire() as conn:

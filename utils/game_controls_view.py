@@ -1,6 +1,7 @@
 import discord
 from utils.embeds import BotConfirmationEmbed, BotErrorEmbed, BotMessageEmbed
 import db.operations
+import db.checks
 
 
 class PersistentView(discord.ui.View):
@@ -34,12 +35,15 @@ class PersistentView(discord.ui.View):
         self.shuffle_button.disabled = True
         await interaction.response.edit_message(view=self)
         await interaction.followup.send("Shuffling...", ephemeral=True)
+        is_host, game_session = await db.checks.is_host(self.bot.db_pool, interaction.user.id)
+        if is_host and game_session['chat_id'] == interaction.channel_id: # ensure you are using your own 8s-chat
+            
+            await db.operations.get_current_teams(self.bot.db_pool, interaction.user.id)
 
     async def end_callback(self, interaction: discord.Interaction):
         self.end_button.disabled = True
         await interaction.response.edit_message(view=self)
         await interaction.followup.send(embed=BotMessageEmbed(description="Ending Game..."))
-
         isEnded, _ = await db.operations.delete_game_if_host(self.bot.db_pool, interaction.user.id)
         if isEnded:
             return await interaction.followup.send(embed=BotConfirmationEmbed(description="Game Ended"))
