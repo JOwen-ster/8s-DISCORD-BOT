@@ -9,7 +9,7 @@ import discord
 from logging_setup import log
 
 
-def split_into_teams(players_map: dict[int, str]):
+async def split_into_teams(players_map: dict[int, str]):
     '''
     Split players (id) based on their selected role
     '''
@@ -42,14 +42,19 @@ def split_into_teams(players_map: dict[int, str]):
     return alpha, bravo
 
 
-# takes in a dict of user_id : role_name
-async def shuffle_teams(player_map: dict[int, str], prev_alpha_slayers, prev_bravo_slayers) -> tuple[dict[str, str | list[str]]]:
+# takes in a dict of user_id : role_name for player map and the pre are 
+#"backline": backlines[0],
+#"support": supports[0],
+#"slayers": [slayers[0], slayers[1]] for alpha
+async def shuffle_teams(
+    player_map: dict[int, str], 
+    prev_alpha: dict[str, int | list[int]], 
+    prev_bravo: dict[str, int | list[int]]
+) -> tuple[dict[str, int | list[int]], dict[str, int | list[int]]]:
     """
-    - Shuffle 8 players into alpha and bravo teams based on role rules.
-
-    - Returns a Tuple of two dicts representing teams. Each dict has keys: "backline", "support", "slayers"
+    Shuffle 8 players into alpha and bravo teams based on role rules.
+    Ensures slayers from the previous round are not on the same team again.
     """
-
     # Separate players by role
     backlines = [pid for pid, role in player_map.items() if role == "8s-backline"]
     supports = [pid for pid, role in player_map.items() if role == "8s-support"]
@@ -57,18 +62,27 @@ async def shuffle_teams(player_map: dict[int, str], prev_alpha_slayers, prev_bra
 
     assert len(backlines) == 2 and len(supports) == 2 and len(slayers) == 4, "Invalid role counts"
 
-    # Backlines: one on each team
+    # Backlines: stay in the same order
     alpha_backline, bravo_backline = backlines
 
     # Supports: swap every time
     alpha_support, bravo_support = supports[::-1]
 
-    # Slayers: shuffle using fisher yates algorithm
-    random.shuffle(slayers)
-    alpha_slayers = slayers[:2]
-    bravo_slayers = slayers[2:]
+    # Previous slayer groups (from maps)
+    prev_alpha_set = set(prev_alpha["slayers"])
+    prev_bravo_set = set(prev_bravo["slayers"])
 
-    # Construct team dicts
+    alpha_slayers, bravo_slayers = [], []
+    for _ in range(100):
+        # fisher yates alg
+        random.shuffle(slayers)
+        alpha_slayers = slayers[:2]
+        bravo_slayers = slayers[2:]
+
+        # Constraint check
+        if set(alpha_slayers) != prev_alpha_set and set(bravo_slayers) != prev_bravo_set:
+            break
+
     alpha_team = {
         "backline": alpha_backline,
         "support": alpha_support,
@@ -83,19 +97,15 @@ async def shuffle_teams(player_map: dict[int, str], prev_alpha_slayers, prev_bra
 
     return alpha_team, bravo_team
 
+
 async def drag_teams(players: list[discord.Member], split_alpha_map, split_bravo_map, bot, alpha_channel_id, bravo_channel_id):
     alpha_chnl = await bot.get_channel(alpha_channel_id) or await bot.fetch_channel(alpha_channel_id)
     bravo_chnl = await bot.get_channel(bravo_channel_id) or await bot.fetch_channel(bravo_channel_id)
 
     for player in players:
-        if player.id in split_alpha_map.keys():
+        if player.id in split_alpha_map.values():
             await player.move_to(alpha_chnl)
-        elif player.id in split_bravo_map.keys():
+        elif player.id in split_bravo_map.values():
             await player.move_to(bravo_chnl)
         else:
             log(f'Player {player.name} - ID:{player.id} not on a team, skipping...')
-
-async def edit_embed(bot, message_id):
-    current_team_embed_message = await bot.user.fetch_message(message_id)
-    embed_example = discord.Embed(description='.')
-    await current_team_embed_message.edit(embed=embed_example)

@@ -73,7 +73,7 @@ class EightsGame(commands.Cog):
         )
         # when calling shuffle the last 2 current teams will be passed in
         # they will be created via fetching user ids and isAlpha for that session via host_id then finding roles in Discord
-        init_alpha_team, init_bravo_team = split_into_teams(role_map)
+        init_alpha_team, init_bravo_team = await split_into_teams(role_map)
 
         if is_valid_role_structure and len(current_lobby) == 8:
             getlog().info(f'VALID TEAM SETUP FOR {user_id} - INSERTING INTO DATABASE')

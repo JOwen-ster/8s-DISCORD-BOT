@@ -1,7 +1,10 @@
 import discord
-from utils.embeds import BotConfirmationEmbed, BotErrorEmbed, BotMessageEmbed
+from utils.embeds import BotConfirmationEmbed, BotErrorEmbed, BotMessageEmbed, FullTeamsEmbed
 import db.operations
 import db.checks
+from utils import role_checks
+import utils.shuffle
+import db.team_change
 
 
 class PersistentView(discord.ui.View):
@@ -36,9 +39,40 @@ class PersistentView(discord.ui.View):
         await interaction.response.edit_message(view=self)
         await interaction.followup.send("Shuffling...", ephemeral=True)
         is_host, game_session = await db.checks.is_host(self.bot.db_pool, interaction.user.id)
+
         if is_host and game_session['chat_id'] == interaction.channel_id: # ensure you are using your own 8s-chat
-            
-            await db.operations.get_current_teams(self.bot.db_pool, interaction.user.id)
+            current_alpha_ids, current_bravo_ids = await db.operations.get_current_teams(self.bot.db_pool, interaction.user.id)
+            are_roles_valid, current_role_count, current_member_list, current_role_map = await role_checks.check_role_structure(
+                self.bot,
+                interaction.guild_id,
+                current_alpha_ids+current_bravo_ids
+            )
+
+            if are_roles_valid:
+                current_alpha, current_bravo = await utils.shuffle.split_into_teams(current_role_map)
+                new_alpha, new_bravo = await utils.shuffle.shuffle_teams(current_role_map, current_alpha, current_bravo)
+                new_alpha_ids = list(new_alpha.values())
+                new_bravo_ids = list(new_bravo.values())
+                await db.team_change.update_teams(self.bot.db_pool, game_session['game_id'], new_alpha_ids, new_bravo_ids)
+
+                updated_team_embed = FullTeamsEmbed(new_alpha, new_bravo)
+                channel = await self.bot.fetch_channel(game_session['chat_id'])
+                message = await channel.fetch_message(game_session['team_message_id'])
+                await message.edit(embed=updated_team_embed)
+                self.shuffle_button.disabled = True
+                await interaction.response.edit_message(view=self)
+
+                await utils.shuffle.drag_teams(
+                    current_member_list,
+                    new_alpha, new_bravo,
+                    self.bot,
+                    game_session['alpha_id'],
+                    game_session['bravo_id']
+                )
+                await interaction.followup.send("Shuffled!", ephemeral=True)
+            else:
+                await interaction.followup.send(f'CURRENT ROLES ARE INVALID - {current_role_count}', ephemeral=True)
+        await interaction.followup.send("You must shuffle from the 8s session you are hosting, not someone else's.", ephemeral=True)
 
     async def end_callback(self, interaction: discord.Interaction):
         self.end_button.disabled = True

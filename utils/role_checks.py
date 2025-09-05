@@ -1,4 +1,4 @@
-import discord
+from discord import Member
 
 ROLE_NAMES = {"8s-backline", "8s-support", "8s-slayer"}
 
@@ -8,13 +8,13 @@ REQUIRED_ROLES = {
     "8s-slayer": 4,
 }
 
-def has_required_role(member) -> tuple[bool, str | None]:
+async def has_required_role(member) -> tuple[bool, str | None]:
     for role in member.roles:
         if role.name in ROLE_NAMES:
             return True, role.name
     return False, None
 
-async def check_role_structure(bot, guild_id, user_ids) -> tuple[bool, dict[str, int], list[discord.Member], dict[int, str]]:
+async def check_role_structure(bot, guild_id, user_ids) -> tuple[bool, dict[str, int], list[Member], dict[int, str]]:
     guild = bot.get_guild(guild_id) or await bot.fetch_guild(guild_id)
 
     role_count = {role: 0 for role in REQUIRED_ROLES}
