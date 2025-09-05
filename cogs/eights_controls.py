@@ -20,7 +20,7 @@ class Controls(commands.Cog):
                 title='Current teams',
                 description=f'https://discord.com/channels/{message.guild.id}/{message.channel.id}/{message.id}')
             )
-        return await interaction.followup.send(embed=BotErrorEmbed(descrption='Could not find your 8s session...'))
+        return await interaction.followup.send(embed=BotErrorEmbed(description='Could not find your 8s session...'))
 
     @app_commands.command(name='8s-end', description='End your current 8s session.')
     async def end_session(self, interaction: discord.Interaction):
