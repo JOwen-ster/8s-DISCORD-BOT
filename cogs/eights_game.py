@@ -7,7 +7,7 @@ import utils.role_checks
 from utils.shuffle import split_into_teams, drag_teams
 from utils.embeds import BotConfirmationEmbed, BotErrorEmbed, FullTeamsEmbed, send_error
 from utils.game_controls_view import PersistentView
-from utils.logging_setup import getlog
+# from utils.logging_setup import getlog
 
 
 class EightsGame(commands.Cog):
@@ -27,7 +27,7 @@ class EightsGame(commands.Cog):
             return await send_error(interaction, "Please run this command in a `8s-chat` text channel")
 
         user_id = interaction.user.id
-        if db.checks.is_playing(self.bot.db_pool, user_id):
+        if await db.checks.is_playing(self.bot.db_pool, user_id):
             return await send_error(interaction, "You must not be in a started game, please leave or end it.")
 
         # category and required channels
@@ -77,7 +77,7 @@ class EightsGame(commands.Cog):
         init_alpha_team, init_bravo_team = await split_into_teams(role_map)
 
         if is_valid_role_structure and len(current_lobby) == 8:
-            getlog().info(f'VALID TEAM SETUP FOR {user_id} - INSERTING INTO DATABASE')
+            # getlog().info(f'VALID TEAM SETUP FOR {user_id} - INSERTING INTO DATABASE')
             teams_message_embed_message = await interaction.channel.send(
                 embed=FullTeamsEmbed(init_alpha_team, init_bravo_team)
             )
@@ -106,9 +106,9 @@ class EightsGame(commands.Cog):
             await teams_message_embed_message.edit(view=PersistentView(self.bot, guild.id, chat_channel.id, teams_message_embed_message.id))
 
             await db.operations.print_tables(self.bot.db_pool)
-            getlog().info(f'CREATED GAME FOR {user_id} - SESSION_ID: {game_id}')
+            # getlog().info(f'CREATED GAME FOR {user_id} - SESSION_ID: {game_id}')
         else:
-            getlog().info(f'IN-VALID TEAM SETUP FOR {user_id} - Current roles: {role_count}')
+            # getlog().info(f'IN-VALID TEAM SETUP FOR {user_id} - Current roles: {role_count}')
             return await interaction.followup.send(
                 embed=BotErrorEmbed(
                     description='Invalid role structure, you must have 2 backlines, 2 supports, and 4 slayers.'),
@@ -141,5 +141,7 @@ class EightsGame(commands.Cog):
         # Create teams from lobby vc (people can leave vc after since info on who is playing is now stored)
         # Edit embed with teams
         # Attach shuffle button view with end game button
+
+
 async def setup(bot):
     await bot.add_cog(EightsGame(bot))

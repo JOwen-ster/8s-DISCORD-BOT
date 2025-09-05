@@ -6,7 +6,7 @@
 
 import random
 import discord
-from logging_setup import log
+from utils.logging_setup import log
 
 
 async def split_into_teams(players_map: dict[int, str]):

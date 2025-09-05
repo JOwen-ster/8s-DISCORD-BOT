@@ -11,5 +11,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy the rest of the bot files
 COPY . .
 
+RUN find . -name "*.pyc" -delete && find . -name "__pycache__" -delete
+
 # Run bot with unbuffered output so logs appear immediately
 CMD ["python", "-u", "run_bot.py"]
