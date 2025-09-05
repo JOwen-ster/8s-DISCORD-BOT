@@ -13,6 +13,8 @@ async def insert_full_game_session(
     bravo_id: int,
     host_id: int,
     lobby_members: list[Member],
+    init_alpha_team: dict[str, int | list[int]],
+    init_bravo_team: dict[str, int | list[int]],
     is_started: bool = True,
     team_message_id: int | None = None,
 ):
@@ -46,10 +48,21 @@ async def insert_full_game_session(
                 team_message_id,
             )
 
-            player_values = [
-                (game_id, member.id, member.id == host_id, None)
-                for member in lobby_members
-            ]
+            # Collect alpha + bravo assignments from the team dicts
+            alpha_ids = [init_alpha_team["backline"], init_alpha_team["support"]] + init_alpha_team["slayers"]
+            bravo_ids = [init_bravo_team["backline"], init_bravo_team["support"]] + init_bravo_team["slayers"]
+
+            # Build values for insertion
+            player_values = []
+            for member in lobby_members:
+                if member.id in alpha_ids:
+                    is_alpha = True
+                elif member.id in bravo_ids:
+                    is_alpha = False
+                else:
+                    is_alpha = None  # should not happen if teams cover all members
+
+                player_values.append((game_id, member.id, member.id == host_id, is_alpha))
 
             # Bulk insert all players at once
             await conn.executemany(
@@ -62,6 +75,7 @@ async def insert_full_game_session(
 
     print(f"Inserted game session {game_id}")
     return game_id
+
 
 async def get_current_teams(connection: Pool, host_id: int) -> tuple[list[int], list[int]]:
     query = """

@@ -94,8 +94,9 @@ class EightsGame(commands.Cog):
                 bravo_id=bravo_channel.id,
                 host_id=user_id,
                 lobby_members=current_lobby,
-                isAlpha=None,
-                isStarted=True,
+                init_alpha_team=init_alpha_team,   # 👈 new
+                init_bravo_team=init_bravo_team,   # 👈 new
+                is_started=True,                   # renamed to match the function param
                 team_message_id=teams_embed.id
             )
 
