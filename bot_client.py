@@ -29,7 +29,7 @@ class Bot(commands.Bot):
         getlog().info('Executing schema files...')
         await db.setup_db.execute_schema_files(
             connection_pool=self.db_pool,
-            schemas_path='./db'
+            schemas_path='./db/schemas'
         )
 
         getlog().info('Adding persistent views...')

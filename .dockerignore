@@ -1,5 +1,6 @@
 __pycache__
-TODO.md
-README.md
 .env.example
 .gitignore
+.github/
+docs/
+local_bot_development/

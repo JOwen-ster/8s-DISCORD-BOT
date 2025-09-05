@@ -1,5 +1,5 @@
 import asyncio
-import botclient
+import bot_client
 import discord
 import asyncpg
 from utils.logging_setup import getlog
@@ -58,7 +58,7 @@ async def main() -> None:
             intents: discord.Intents = discord.Intents.default()
             intents.members = True
             intents.message_content = True
-            discord_bot: botclient.Bot = botclient.Bot(
+            discord_bot: bot_client.Bot = bot_client.Bot(
                 command_prefix='}',
                 help_command=None,
                 intents=intents,
