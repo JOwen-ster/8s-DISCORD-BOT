@@ -51,8 +51,8 @@ class PersistentView(discord.ui.View):
             if are_roles_valid:
                 current_alpha, current_bravo = await utils.shuffle.split_into_teams(current_role_map)
                 new_alpha, new_bravo = await utils.shuffle.shuffle_teams(current_role_map, current_alpha, current_bravo)
-                new_alpha_ids = list(new_alpha.values())
-                new_bravo_ids = list(new_bravo.values())
+                new_alpha_ids = [pid for sublist in new_alpha.values() for pid in sublist]
+                new_bravo_ids = [pid for sublist in new_bravo.values() for pid in sublist]
                 await db.team_change.update_teams(self.bot.db_pool, game_session['game_id'], new_alpha_ids, new_bravo_ids)
 
                 updated_team_embed = FullTeamsEmbed(new_alpha, new_bravo)
@@ -72,7 +72,7 @@ class PersistentView(discord.ui.View):
                 await interaction.followup.send("Shuffled!", ephemeral=True)
             else:
                 await interaction.followup.send(f'CURRENT ROLES ARE INVALID - {current_role_count}', ephemeral=True)
-        await interaction.followup.send("You must shuffle from the 8s session you are hosting, not someone else's.", ephemeral=True)
+        await interaction.followup.send("You can only shuffle the 8s session YOU are hosting, not someone else's.", ephemeral=True)
 
     async def end_callback(self, interaction: discord.Interaction):
         self.end_button.disabled = True
