@@ -6,6 +6,7 @@ import db.checks
 import utils.role_checks
 from utils.shuffle import split_into_teams, drag_teams
 from utils.embeds import BotConfirmationEmbed, BotErrorEmbed, FullTeamsEmbed, send_error
+from utils.game_controls_view import PersistentView
 from utils.logging_setup import getlog
 
 
@@ -77,7 +78,9 @@ class EightsGame(commands.Cog):
 
         if is_valid_role_structure and len(current_lobby) == 8:
             getlog().info(f'VALID TEAM SETUP FOR {user_id} - INSERTING INTO DATABASE')
-            teams_embed = await interaction.channel.send(embed=FullTeamsEmbed(init_alpha_team, init_bravo_team))
+            teams_message_embed_message = await interaction.channel.send(
+                embed=FullTeamsEmbed(init_alpha_team, init_bravo_team)
+            )
             
             # TODO: CHANGE METHOD TO SET TEAMS AT START DONT MAKE NONE THIS CAUSES ISSUES WITH SHUFFLE
             # Pass in init teams
@@ -94,11 +97,13 @@ class EightsGame(commands.Cog):
                 bravo_id=bravo_channel.id,
                 host_id=user_id,
                 lobby_members=current_lobby,
-                init_alpha_team=init_alpha_team,   # 👈 new
-                init_bravo_team=init_bravo_team,   # 👈 new
-                is_started=True,                   # renamed to match the function param
-                team_message_id=teams_embed.id
+                init_alpha_team=init_alpha_team,
+                init_bravo_team=init_bravo_team,
+                is_started=True,
+                team_message_id=teams_message_embed_message.id
             )
+
+            await teams_message_embed_message.edit(view=PersistentView(self.bot, guild.id, chat_channel.id, teams_message_embed_message.id))
 
             await db.operations.print_tables(self.bot.db_pool)
             getlog().info(f'CREATED GAME FOR {user_id} - SESSION_ID: {game_id}')
