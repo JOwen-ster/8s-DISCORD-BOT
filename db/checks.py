@@ -9,11 +9,11 @@ async def is_playing(connection_pool, user_id: int) -> bool:
         result = await conn.fetchval(query, user_id)  # returns 1 or None
     return result == 1
 
-async def is_host(connection_pool, user_id: int) -> tuple[bool, dict] | bool:
+async def is_host(connection_pool, user_id: int) -> tuple[bool, dict | None]:
     """
     Check if a user is a host.
 
-    Returns True and the users game session if the given user id is a host id, false otherwise.
+    Returns (True, game_session) if the user is a host, otherwise (False, None).
     """
     async with connection_pool.acquire() as conn:
         row = await conn.fetchrow(
@@ -26,4 +26,4 @@ async def is_host(connection_pool, user_id: int) -> tuple[bool, dict] | bool:
             user_id
         )
 
-    return True, row if row else False, None
+    return (True, row) if row else (False, None)
