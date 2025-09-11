@@ -25,7 +25,7 @@ async def check_role_structure(bot, guild_id, user_ids) -> tuple[bool, dict[str,
         member = guild.get_member(user_id) or await guild.fetch_member(user_id)
 
         if member:
-            has_role, role_name = has_required_role(member)
+            has_role, role_name = await has_required_role(member)
             if has_role and role_name:
                 role_count[role_name] += 1
 
