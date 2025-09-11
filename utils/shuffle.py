@@ -106,9 +106,12 @@ async def drag_teams(players, split_alpha_map, split_bravo_map, bot, alpha_chann
     bravo_ids = {i for v in split_bravo_map.values() for i in (v if isinstance(v, list) else [v])}
 
     for player in players:
-        if player.id in alpha_ids:
-            await player.move_to(alpha_chnl)
-        elif player.id in bravo_ids:
-            await player.move_to(bravo_chnl)
-        else:
-            log(f'Player {player.name} - ID:{player.id} not on a team, skipping...')
+        try:
+            if player.id in alpha_ids:
+                await player.move_to(alpha_chnl)
+            elif player.id in bravo_ids:
+                await player.move_to(bravo_chnl)
+            else:
+                log(f'Player {player.name} - ID:{player.id} not on a team, skipping...')
+        except Exception as e:
+            log('e')
