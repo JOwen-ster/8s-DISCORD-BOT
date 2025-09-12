@@ -113,7 +113,7 @@ async def get_team_message_id(pool, user_id: int) -> int | None:
     async with pool.acquire() as conn:
         return await conn.fetchval(query, user_id)
 
-async def delete_game_if_host(pool: Pool, user_id: int) -> tuple[bool, int | None]:
+async def delete_game_if_host(pool: Pool, user_id: int) -> tuple[bool, dict[any] | None]:
     """
     Deletes a game session if the given user is the host.
     Returns (True, team_message_id) if a game was deleted,
@@ -131,7 +131,7 @@ async def delete_game_if_host(pool: Pool, user_id: int) -> tuple[bool, int | Non
             )
 
             if not game:
-                return False, None
+                return (False, dict())
 
             # Delete the game session
             await conn.execute(
@@ -142,7 +142,7 @@ async def delete_game_if_host(pool: Pool, user_id: int) -> tuple[bool, int | Non
                 game["game_id"]
             )
 
-            return True, game["team_message_id"]
+            return (True, game)
 
 async def delete_game_by_category(pool: Pool, category_id: int) -> int | None:
     """

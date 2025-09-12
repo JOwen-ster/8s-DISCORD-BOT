@@ -122,25 +122,8 @@ class EightsGame(commands.Cog):
 
         await interaction.channel.send(embed=BotConfirmationEmbed(
             title='✅Game Started',
-            description=f'Your game_session_id is {game_id} Good luck everyone!')
+            description=f'Your game_session_id is {game_id}. Good luck everyone!')
         )
-
-        # TODO: DELETE THE SENT EMBED USING IDS THEN RESEND AND UPDATE DB MESSAGE ID
-        # channel = bot.get_channel(channel_id)  # gets the channel object from cache
-        # if channel is None:
-        #     channel = await bot.fetch_channel(channel_id)  # fetch from API if not cached
-        # message = await channel.fetch_message(message_id)
-        # await message.delete()
-
-        # use interaction.guild.id, if a user runs the start command in a different server
-        #that isnt where you are grouping in, tell them to use it in the correct corresponding server
-        # Check if the lobby vc is full (8 players)
-        # Send blank embed (will be edited) to chat
-        # Add details to db for both games and players tables
-        # Set voice calls limited to 10 6 and 6 for specs
-        # Create teams from lobby vc (people can leave vc after since info on who is playing is now stored)
-        # Edit embed with teams
-        # Attach shuffle button view with end game button
 
 
 async def setup(bot):

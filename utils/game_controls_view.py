@@ -195,9 +195,9 @@ class PersistentView(discord.ui.View):
         self.end_button.disabled = True
         await interaction.response.edit_message(view=self)
 
-        isEnded, _ = await db.operations.delete_game_if_host(
+        isEnded = await db.operations.delete_game_if_host(
             self.bot.db_pool, interaction.user.id
-        )
+        )[0]
 
         if isEnded:
             await interaction.followup.send(embed=BotMessageEmbed(description="Ending Game..."))

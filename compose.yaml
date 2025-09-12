@@ -1,7 +1,7 @@
 services:
   db:
     image: postgres
-    container_name: PostgreSQL_Database
+    container_name: 8s_PostgreSQL_Database
     restart: always
     env_file: ./.env # USES POSTGRES_USER, POSTGRES_PASSWORD, POSTGRES_DB
     # environment:
@@ -20,7 +20,7 @@ services:
       retries: 5
 
   discord_bot:
-    container_name: Discord_Bot
+    container_name: 8s_Discord_Bot
     build: .
     env_file: ./.env
     restart: unless-stopped
